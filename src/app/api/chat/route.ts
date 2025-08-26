@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
+
+// Add edge runtime configuration for Cloudflare compatibility
+export const runtime = 'edge';
 
 export async function POST(request: NextRequest) {
   try {
@@ -12,9 +14,16 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
+    // Use fetch instead of axios for edge runtime compatibility
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://your-app.pages.dev', // Update with your Cloudflare Pages URL
+        'X-Title': 'AI Chat Hub'
+      },
+      body: JSON.stringify({
         model: model,
         messages: [
           {
@@ -22,33 +31,31 @@ export async function POST(request: NextRequest) {
             content: message,
           },
         ],
-      },
-      {
-        headers: {
-          Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:3001', // Required for OpenRouter
-          'X-Title': 'OpenRouter Test App', // Optional, for better analytics
-        },
-      }
-    );
+      })
+    });
 
-    const aiResponse = response.data.choices[0].message.content;
-    
-    return NextResponse.json({ 
+    if (!response.ok) {
+      const errorData = await response.text();
+      throw new Error(`OpenRouter API error: ${response.status} - ${errorData}`);
+    }
+
+    const data = await response.json();
+    const aiResponse = data.choices[0].message.content;
+
+    return NextResponse.json({
       response: aiResponse,
       model: model,
-      usage: response.data.usage 
+      usage: data.usage 
     });
 
   } catch (error: unknown) {
-    const err = error as { response?: { data?: unknown }; message?: string };
-    console.error('OpenRouter API Error:', err.response?.data || err.message);
+    const err = error as { message?: string };
+    console.error('OpenRouter API Error:', err.message);
     
     return NextResponse.json(
       { 
         error: 'Failed to get response from AI',
-        details: err.response?.data || err.message 
+        details: err.message 
       },
       { status: 500 }
     );

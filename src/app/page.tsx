@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import axios from 'axios';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -17,8 +16,12 @@ const MODELS = [
   { id: 'anthropic/claude-3-haiku:beta', name: 'Claude 3 Haiku', icon: '🎋' },
   { id: 'anthropic/claude-3.5-sonnet:beta', name: 'Claude 3.5 Sonnet', icon: '🎭' },
   { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', icon: '🦙' },
-  { id: 'microsoft/wizardlm-2-8x22b', name: 'WizardLM 2 8x22B', icon: '🧙' },
   { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash', icon: '💎' },
+  { id: 'z-ai/glm-4.5-air:free', name: 'Z.AI: GLM 4.5 Air: Free', icon: '💎' },
+  { id: 'qwen/qwen3-coder:', name: 'Qwen: Qwen3 Coder', icon: '💎' },
+  { id: 'moonshotai/kimi-k2:free', name: 'MoonshotAI: Kimi K2: Free', icon: '💎' },
+  { id: 'meta-llama/llama-3.3-8b-instruct:free', name: 'lamma 3.3 8B', icon: '💎' },
+  { id: 'deepseek/deepseek-r1-0528:free', name: 'Deep Seek (free)', icon: '💎' },
 ];
 
 export default function Home() {
@@ -53,23 +56,36 @@ export default function Home() {
     setError('');
 
     try {
-      const response = await axios.post('/api/chat', {
-        message: input,
-        model: selectedModel
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          message: input,
+          model: selectedModel
+        })
       });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Something went wrong');
+      }
+
+      const data = await response.json();
 
       const assistantMessage: ChatMessage = {
         role: 'assistant',
-        content: response.data.response,
-        model: response.data.model,
+        content: data.response,
+        model: data.model,
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, assistantMessage]);
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || 'Something went wrong');
-      console.error('Error:', error.response?.data);
+      const error = err as { message?: string };
+      setError(error.message || 'Something went wrong');
+      console.error('Error:', error.message);
     } finally {
       setIsLoading(false);
     }
