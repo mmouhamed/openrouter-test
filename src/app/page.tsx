@@ -20,7 +20,7 @@ export default function LandingPage() {
             </div>
 
             {/* Main Heading */}
-            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 dark:text-white mb-4 sm:mb-6 bg-gradient-to-r from-teal-600 to-teal-800 bg-clip-text text-transparent">
               ChatQora
             </h1>
 
@@ -37,7 +37,7 @@ export default function LandingPage() {
 
             {/* Call to Action Button - Mobile Optimized */}
             <Link href="/chat">
-              <button className="group relative inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 lg:px-12 py-3.5 sm:py-4 lg:py-5 text-base sm:text-lg lg:text-xl font-semibold text-white bg-gradient-to-r from-blue-500 to-purple-600 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:from-blue-600 hover:to-purple-700 focus:outline-none focus:ring-4 focus:ring-blue-500/50 touch-manipulation">
+              <button className="group relative inline-flex items-center justify-center w-full sm:w-auto px-6 sm:px-8 lg:px-12 py-3.5 sm:py-4 lg:py-5 text-base sm:text-lg lg:text-xl font-semibold text-white bg-gradient-to-r from-teal-600 to-teal-700 rounded-xl sm:rounded-2xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300 hover:from-teal-700 hover:to-teal-800 focus:outline-none focus:ring-4 focus:ring-teal-500/50 touch-manipulation">
                 <span className="mr-2 sm:mr-3">Start Chatting on ChatQora</span>
                 <span className="text-xl sm:text-2xl group-hover:translate-x-1 transition-transform duration-200">🚀</span>
               </button>
