@@ -41,13 +41,14 @@ export async function POST(request: NextRequest) {
       usage: response.data.usage 
     });
 
-  } catch (error: any) {
-    console.error('OpenRouter API Error:', error.response?.data || error.message);
+  } catch (error: unknown) {
+    const err = error as { response?: { data?: unknown }; message?: string };
+    console.error('OpenRouter API Error:', err.response?.data || err.message);
     
     return NextResponse.json(
       { 
         error: 'Failed to get response from AI',
-        details: error.response?.data || error.message 
+        details: err.response?.data || err.message 
       },
       { status: 500 }
     );

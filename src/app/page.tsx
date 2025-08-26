@@ -66,9 +66,10 @@ export default function Home() {
       };
 
       setMessages(prev => [...prev, assistantMessage]);
-    } catch (err: any) {
-      setError(err.response?.data?.error || 'Something went wrong');
-      console.error('Error:', err.response?.data);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || 'Something went wrong');
+      console.error('Error:', error.response?.data);
     } finally {
       setIsLoading(false);
     }
@@ -93,118 +94,172 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4">
-      <div className="max-w-4xl mx-auto">
-        <div className="bg-white rounded-lg shadow-lg">
-          {/* Header */}
-          <div className="border-b p-6">
-            <h1 className="text-2xl font-bold text-gray-800 mb-4">
-              OpenRouter API Test
-            </h1>
-            
-            <div className="flex flex-wrap gap-4">
-              <div className="flex-1 min-w-60">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Select Model:
-                </label>
-                <select 
-                  value={selectedModel}
-                  onChange={(e) => setSelectedModel(e.target.value)}
-                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  disabled={isLoading}
-                >
-                  {MODELS.map((model) => (
-                    <option key={model.id} value={model.id}>
-                      {model.name}
-                    </option>
-                  ))}
-                </select>
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+      <div className="flex flex-col h-screen max-w-4xl mx-auto">
+        {/* Modern Header with Glassmorphism */}
+        <header className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-b border-white/20 dark:border-gray-700/50 shadow-sm">
+          <div className="p-4 sm:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center space-x-3">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
+                  <span className="text-white text-sm font-bold">AI</span>
+                </div>
+                <h1 className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
+                  AI Chat Hub
+                </h1>
               </div>
-              
-              <div className="flex items-end">
-                <button
-                  onClick={clearChat}
-                  className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
-                  disabled={isLoading}
-                >
-                  Clear Chat
-                </button>
+              <button
+                onClick={clearChat}
+                className="px-3 py-2 text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                disabled={isLoading}
+              >
+                Clear
+              </button>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  AI Model
+                </label>
+                <div className="relative">
+                  <select 
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-gray-800 dark:text-gray-200"
+                    disabled={isLoading}
+                  >
+                    {MODELS.map((model) => (
+                      <option key={model.id} value={model.id}>
+                        {model.icon} {model.name}
+                      </option>
+                    ))}
+                  </select>
+                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-lg">
+                    {getModelInfo(selectedModel).icon}
+                  </div>
+                </div>
               </div>
             </div>
           </div>
+        </header>
 
-          {/* Chat Messages */}
-          <div className="h-96 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 ? (
-              <div className="text-gray-500 text-center py-8">
-                Start a conversation with your selected AI model!
+        {/* Modern Chat Messages Area */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scroll-smooth custom-scrollbar">
+          {messages.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center">
+              <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-4">
+                <span className="text-white text-2xl">💬</span>
               </div>
-            ) : (
-              messages.map((message, index) => (
+              <h2 className="text-xl font-medium text-gray-800 dark:text-gray-200 mb-2">Ready to Chat!</h2>
+              <p className="text-gray-500 dark:text-gray-400 max-w-md">
+                Choose your AI model and start a conversation. Your messages will appear here with beautiful, modern styling.
+              </p>
+            </div>
+          ) : (
+            <>
+              {messages.map((message, index) => (
                 <div
                   key={index}
-                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                  className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
                 >
-                  <div
-                    className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                      message.role === 'user'
-                        ? 'bg-blue-500 text-white'
-                        : 'bg-gray-200 text-gray-800'
-                    }`}
-                  >
-                    {message.role === 'assistant' && message.model && (
-                      <div className="text-xs opacity-70 mb-1">
-                        {MODELS.find(m => m.id === message.model)?.name || message.model}
+                  <div className="flex flex-col max-w-[85%] sm:max-w-[70%]">
+                    <div
+                      className={`px-4 py-3 rounded-2xl backdrop-blur-md shadow-sm transition-all duration-300 ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto rounded-br-md'
+                          : 'bg-white/80 dark:bg-gray-800/90 border border-white/30 dark:border-gray-600/50 text-gray-800 dark:text-gray-200 mr-auto rounded-bl-md'
+                      }`}
+                    >
+                      {message.role === 'assistant' && message.model && (
+                        <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-2">
+                          <span className="mr-1">{getModelInfo(message.model).icon}</span>
+                          <span className="font-medium">{getModelInfo(message.model).name}</span>
+                        </div>
+                      )}
+                      <div className="whitespace-pre-wrap text-base leading-relaxed">
+                        {message.content}
                       </div>
-                    )}
-                    <div className="whitespace-pre-wrap">{message.content}</div>
+                    </div>
+                    <div className={`text-xs text-gray-400 dark:text-gray-500 mt-1 px-1 ${
+                      message.role === 'user' ? 'text-right' : 'text-left'
+                    }`}>
+                      {formatTime(message.timestamp)}
+                    </div>
                   </div>
                 </div>
-              ))
-            )}
-            
-            {isLoading && (
-              <div className="flex justify-start">
-                <div className="bg-gray-200 text-gray-800 px-4 py-2 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-600"></div>
-                    <span>Thinking...</span>
+              ))}
+              
+              {isLoading && (
+                <div className="flex justify-start animate-fade-in">
+                  <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border border-white/30 dark:border-gray-600/50 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
+                    <div className="flex items-center space-x-3">
+                      <div className="flex space-x-1">
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
+                        <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.4s'}}></div>
+                      </div>
+                      <span className="text-sm text-gray-600 dark:text-gray-300">AI is thinking...</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
+              )}
+            </>
+          )}
+          <div ref={messagesEndRef} />
+        </main>
 
-          {/* Error Display */}
-          {error && (
-            <div className="px-6 py-2">
-              <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
-                <strong>Error:</strong> {error}
+        {/* Error Display */}
+        {error && (
+          <div className="flex-shrink-0 px-4 sm:px-6 py-2">
+            <div className="bg-red-50 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300 px-4 py-3 rounded-xl shadow-sm animate-fade-in">
+              <div className="flex items-center">
+                <span className="text-red-500 mr-2">⚠️</span>
+                <span className="font-medium">Error:</span>
+                <span className="ml-2">{error}</span>
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Input Form */}
-          <div className="border-t p-6">
-            <form onSubmit={sendMessage} className="flex space-x-4">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type your message..."
-                className="flex-1 p-3 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                disabled={isLoading}
-              />
+        {/* Modern Input Form */}
+        <footer className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-t border-white/20 dark:border-gray-700/50">
+          <div className="p-4 sm:p-6">
+            <form onSubmit={sendMessage} className="flex space-x-3">
+              <div className="flex-1 relative">
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Type your message..."
+                  className="w-full px-4 py-3 pr-12 bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400 text-base text-gray-900 dark:text-gray-100"
+                  disabled={isLoading}
+                />
+                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
+                  💬
+                </div>
+              </div>
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="px-6 py-3 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
+                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl font-medium"
               >
-                {isLoading ? 'Sending...' : 'Send'}
+                {isLoading ? (
+                  <div className="flex items-center space-x-2">
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
+                    <span>Sending</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-2">
+                    <span>Send</span>
+                    <span>🚀</span>
+                  </div>
+                )}
               </button>
             </form>
           </div>
-        </div>
+        </footer>
       </div>
     </div>
   );
