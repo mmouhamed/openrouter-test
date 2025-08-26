@@ -23,6 +23,7 @@ const MODELS = [
   { id: 'moonshotai/kimi-k2:free', name: 'MoonshotAI: Kimi K2: Free', icon: '💎' },
   { id: 'meta-llama/llama-3.3-8b-instruct:free', name: 'lamma 3.3 8B', icon: '💎' },
   { id: 'deepseek/deepseek-r1-0528:free', name: 'Deep Seek (free)', icon: '💎' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Meta: Llama 3.3 70B Instruct', icon: '💎' },
 ];
 
 export default function Home() {
@@ -112,38 +113,39 @@ export default function Home() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-screen max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="flex flex-col h-screen max-w-4xl mx-auto px-2 sm:px-4 lg:px-8">
         {/* Modern Header with Glassmorphism */}
-        <header className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-b border-white/20 dark:border-gray-700/50 shadow-sm rounded-xl mt-4">
-          <div className="p-4 sm:p-6">
-            <div className="flex items-center justify-between mb-4">
+        <header className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-b border-white/20 dark:border-gray-700/50 shadow-sm rounded-xl mt-2 sm:mt-4">
+          <div className="p-3 sm:p-4 lg:p-6">
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
               <div>
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+                <h1 className="text-lg sm:text-xl lg:text-2xl font-semibold text-gray-900 dark:text-white">
                   Chat Assistant
                 </h1>
-                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 hidden xs:block">
                   Ask anything to your AI assistant
                 </p>
               </div>
               <button
                 onClick={clearChat}
-                className="px-3 py-2 text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
+                className="px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-lg sm:rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none min-w-0 flex-shrink-0"
                 disabled={isLoading}
               >
-                Clear Chat
+                <span className="hidden sm:inline">Clear Chat</span>
+                <span className="sm:hidden">Clear</span>
               </button>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex flex-col gap-2 sm:gap-3">
               <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <label className="block text-xs sm:text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 sm:mb-2">
                   AI Model
                 </label>
                 <div className="relative">
                   <select 
                     value={selectedModel}
                     onChange={(e) => setSelectedModel(e.target.value)}
-                    className="w-full pl-10 pr-4 py-3 bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-gray-800 dark:text-gray-200"
+                    className="w-full pl-8 sm:pl-10 pr-3 sm:pr-4 py-2 sm:py-3 text-sm sm:text-base bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-gray-800 dark:text-gray-200"
                     disabled={isLoading}
                   >
                     {MODELS.map((model) => (
@@ -152,7 +154,7 @@ export default function Home() {
                       </option>
                     ))}
                   </select>
-                  <div className="absolute left-3 top-1/2 transform -translate-y-1/2 text-lg">
+                  <div className="absolute left-2 sm:left-3 top-1/2 transform -translate-y-1/2 text-sm sm:text-lg">
                     {getModelInfo(selectedModel).icon}
                   </div>
                 </div>
@@ -162,7 +164,7 @@ export default function Home() {
         </header>
 
         {/* Modern Chat Messages Area */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 scroll-smooth custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 scroll-smooth custom-scrollbar">
           {messages.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-center">
               <div className="w-16 h-16 bg-gradient-to-r from-blue-400 to-purple-500 rounded-full flex items-center justify-center mb-4">
@@ -180,9 +182,9 @@ export default function Home() {
                   key={index}
                   className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'} animate-fade-in`}
                 >
-                  <div className="flex flex-col max-w-[85%] sm:max-w-[70%]">
+                  <div className="flex flex-col max-w-[90%] sm:max-w-[85%] md:max-w-[70%]">
                     <div
-                      className={`px-4 py-3 rounded-2xl backdrop-blur-md shadow-sm transition-all duration-300 ${
+                      className={`px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl backdrop-blur-md shadow-sm transition-all duration-300 ${
                         message.role === 'user'
                           ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white ml-auto rounded-br-md'
                           : 'bg-white/80 dark:bg-gray-800/90 border border-white/30 dark:border-gray-600/50 text-gray-800 dark:text-gray-200 mr-auto rounded-bl-md'
@@ -194,7 +196,7 @@ export default function Home() {
                           <span className="font-medium">{getModelInfo(message.model).name}</span>
                         </div>
                       )}
-                      <div className="whitespace-pre-wrap text-base leading-relaxed">
+                      <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
                         {message.content}
                       </div>
                     </div>
@@ -209,8 +211,8 @@ export default function Home() {
               
               {isLoading && (
                 <div className="flex justify-start animate-fade-in">
-                  <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border border-white/30 dark:border-gray-600/50 text-gray-800 dark:text-gray-200 px-4 py-3 rounded-2xl rounded-bl-md shadow-sm">
-                    <div className="flex items-center space-x-3">
+                  <div className="bg-white/80 dark:bg-gray-800/90 backdrop-blur-md border border-white/30 dark:border-gray-600/50 text-gray-800 dark:text-gray-200 px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl rounded-bl-md shadow-sm max-w-[90%] sm:max-w-[85%] md:max-w-[70%]">
+                    <div className="flex items-center space-x-2 sm:space-x-3">
                       <div className="flex space-x-1">
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse"></div>
                         <div className="w-2 h-2 bg-gray-400 rounded-full animate-pulse" style={{animationDelay: '0.2s'}}></div>
@@ -228,12 +230,12 @@ export default function Home() {
 
         {/* Error Display */}
         {error && (
-          <div className="flex-shrink-0 px-4 sm:px-6 py-2">
-            <div className="bg-red-50 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300 px-4 py-3 rounded-xl shadow-sm animate-fade-in">
-              <div className="flex items-center">
-                <span className="text-red-500 mr-2">⚠️</span>
+          <div className="flex-shrink-0 px-2 sm:px-4 lg:px-6 py-2">
+            <div className="bg-red-50 dark:bg-red-900/20 backdrop-blur-sm border border-red-200 dark:border-red-800/50 text-red-800 dark:text-red-300 px-3 py-2 sm:px-4 sm:py-3 rounded-lg sm:rounded-xl shadow-sm animate-fade-in">
+              <div className="flex items-center text-sm sm:text-base">
+                <span className="text-red-500 mr-1 sm:mr-2 text-sm">⚠️</span>
                 <span className="font-medium">Error:</span>
-                <span className="ml-2">{error}</span>
+                <span className="ml-1 sm:ml-2 break-words flex-1">{error}</span>
               </div>
             </div>
           </div>
@@ -241,8 +243,8 @@ export default function Home() {
 
         {/* Modern Input Form */}
         <footer className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-t border-white/20 dark:border-gray-700/50">
-          <div className="p-4 sm:p-6">
-            <form onSubmit={sendMessage} className="flex space-x-3">
+          <div className="p-3 sm:p-4 lg:p-6">
+            <form onSubmit={sendMessage} className="flex space-x-2 sm:space-x-3">
               <div className="flex-1 relative">
                 <input
                   ref={inputRef}
@@ -250,17 +252,17 @@ export default function Home() {
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Type your message..."
-                  className="w-full px-4 py-3 pr-12 bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400 text-base text-gray-900 dark:text-gray-100"
+                  className="w-full px-3 sm:px-4 py-3 pr-10 sm:pr-12 text-sm sm:text-base bg-white/80 dark:bg-gray-800/90 backdrop-blur-sm border border-white/30 dark:border-gray-600/50 rounded-lg sm:rounded-xl focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 placeholder-gray-500 dark:placeholder-gray-400 text-gray-900 dark:text-gray-100 resize-none"
                   disabled={isLoading}
                 />
-                <div className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500">
+                <div className="absolute right-2 sm:right-3 top-1/2 transform -translate-y-1/2 text-gray-400 dark:text-gray-500 text-sm sm:text-base">
                   💬
                 </div>
               </div>
               <button
                 type="submit"
                 disabled={isLoading || !input.trim()}
-                className="px-6 py-3 bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl font-medium"
+                className="px-4 sm:px-6 py-3 text-sm sm:text-base bg-gradient-to-r from-blue-500 to-blue-600 text-white rounded-lg sm:rounded-xl hover:from-blue-600 hover:to-blue-700 disabled:from-gray-400 disabled:to-gray-400 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none shadow-lg hover:shadow-xl font-medium min-w-0 flex-shrink-0"
               >
                 {isLoading ? (
                   <div className="flex items-center space-x-2">

@@ -15,7 +15,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Main Content Area - Adjusted for sidebar */}
       <div className="lg:ml-64 min-h-screen">
         {/* Mobile header spacer */}
-        <div className="h-16 lg:hidden"></div>
+        <div className="h-14 sm:h-16 lg:hidden"></div>
         
         {/* Main content */}
         <main className="h-full">
