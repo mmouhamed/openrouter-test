@@ -12,7 +12,8 @@ interface SidebarItem {
 }
 
 const sidebarItems: SidebarItem[] = [
-  { name: 'Chat', href: '/', icon: '💬' },
+  { name: 'Home', href: '/', icon: '🏠' },
+  { name: 'Chat', href: '/chat', icon: '💬' },
   // Add more items here later
   // { name: 'History', href: '/history', icon: '📜' },
   // { name: 'Settings', href: '/settings', icon: '⚙️' },
@@ -58,13 +59,13 @@ export default function Sidebar() {
         <div className="p-4 sm:p-6 border-b border-white/20 dark:border-gray-700/50">
           <div className="flex items-center space-x-2 sm:space-x-3">
             <div className="w-9 sm:w-10 h-9 sm:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg sm:text-xl font-bold">AI</span>
+              <span className="text-white text-lg sm:text-xl font-bold">Q</span>
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent truncate">
-                AI Chat Hub
+                ChatQora
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400">Premium Experience</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">AI Conversation Companion</p>
             </div>
           </div>
         </div>

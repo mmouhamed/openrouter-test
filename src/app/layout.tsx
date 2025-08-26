@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Chat Hub - Mobile Optimized",
-  description: "Mobile-optimized AI chat interface with multiple model support",
+  title: "ChatQora - Your AI Conversation Companion",
+  description: "Experience the future of AI conversations with ChatQora. Connect with powerful language models and explore limitless possibilities through natural dialogue.",
 };
 
 export default function RootLayout({
