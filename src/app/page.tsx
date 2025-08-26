@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import AppLayout from '@/components/AppLayout';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -110,26 +111,26 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-purple-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
-      <div className="flex flex-col h-screen max-w-4xl mx-auto">
+    <AppLayout>
+      <div className="flex flex-col h-screen max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Modern Header with Glassmorphism */}
-        <header className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-b border-white/20 dark:border-gray-700/50 shadow-sm">
+        <header className="flex-shrink-0 backdrop-blur-md bg-white/70 dark:bg-gray-900/80 border-b border-white/20 dark:border-gray-700/50 shadow-sm rounded-xl mt-4">
           <div className="p-4 sm:p-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center space-x-3">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center">
-                  <span className="text-white text-sm font-bold">AI</span>
-                </div>
-                <h1 className="text-xl sm:text-2xl font-semibold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
-                  AI Chat Hub
+              <div>
+                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 dark:text-white">
+                  Chat Assistant
                 </h1>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  Ask anything to your AI assistant
+                </p>
               </div>
               <button
                 onClick={clearChat}
                 className="px-3 py-2 text-sm bg-gradient-to-r from-gray-500 to-gray-600 text-white rounded-xl hover:from-gray-600 hover:to-gray-700 transition-all duration-200 transform hover:scale-105 disabled:opacity-50 disabled:transform-none"
                 disabled={isLoading}
               >
-                Clear
+                Clear Chat
               </button>
             </div>
             
@@ -277,6 +278,6 @@ export default function Home() {
           </div>
         </footer>
       </div>
-    </div>
+    </AppLayout>
   );
 }
