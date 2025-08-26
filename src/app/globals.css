@@ -190,10 +190,6 @@ body {
     font-size: 16px; /* Prevents zoom on iOS */
   }
   
-  /* Optimize text sizes for mobile */
-  h1 { font-size: 1.5rem; }
-  h2 { font-size: 1.25rem; }
-  
   /* Better mobile scrolling */
   .custom-scrollbar {
     -webkit-overflow-scrolling: touch;
@@ -208,7 +204,7 @@ body {
   user-select: none;
 }
 
-/* Mobile viewport fixes */
+/* Mobile-first chat optimizations */
 @media (max-width: 640px) {
   /* Prevent horizontal overflow */
   * {
@@ -218,5 +214,78 @@ body {
   /* Better mobile chat bubble sizing */
   .chat-message {
     max-width: 90% !important;
+  }
+  
+  /* Mobile-specific animations */
+  .mobile-fade-in {
+    animation: mobile-fade-in 0.2s ease-out;
+  }
+}
+
+@keyframes mobile-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Safe area support for mobile devices */
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Better mobile scroll behavior */
+.overscroll-contain {
+  overscroll-behavior: contain;
+}
+
+/* Mobile keyboard handling */
+@media (max-width: 640px) {
+  .mobile-input-container {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+  }
+  
+  /* Prevent zoom on input focus for mobile */
+  input, textarea, select {
+    font-size: 16px !important;
+  }
+}
+
+/* High DPI mobile screens */
+@media (-webkit-min-device-pixel-ratio: 2) and (max-width: 640px) {
+  .chat-avatar {
+    image-rendering: -webkit-optimize-contrast;
+    image-rendering: crisp-edges;
+  }
+}
+
+/* iOS specific improvements */
+@supports (-webkit-touch-callout: none) {
+  .ios-scroll-fix {
+    -webkit-overflow-scrolling: touch;
+    overflow-scrolling: touch;
+  }
+  
+  /* Fix iOS viewport units */
+  .mobile-vh {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+}
+
+/* Android specific improvements */
+@media (hover: none) and (pointer: coarse) {
+  .android-touch-fix {
+    -webkit-tap-highlight-color: transparent;
   }
 }

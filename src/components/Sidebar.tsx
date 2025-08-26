@@ -58,8 +58,12 @@ export default function Sidebar() {
         {/* Sidebar Header */}
         <div className="p-4 sm:p-6 border-b border-white/20 dark:border-gray-700/50">
           <div className="flex items-center space-x-2 sm:space-x-3">
-            <div className="w-9 sm:w-10 h-9 sm:h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-lg sm:text-xl font-bold">Q</span>
+            <div className="w-9 sm:w-10 h-9 sm:h-10 flex-shrink-0">
+              <img 
+                src="/chatbot-icon.svg" 
+                alt="ChatQora Logo" 
+                className="w-full h-full"
+              />
             </div>
             <div className="min-w-0 flex-1">
               <h2 className="text-base sm:text-lg font-semibold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent truncate">
