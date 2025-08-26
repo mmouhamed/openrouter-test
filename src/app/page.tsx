@@ -7,22 +7,27 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
   model?: string;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
   timestamp: Date;
 }
 
 const MODELS = [
-  { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', icon: '🚀' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '🧠' },
-  { id: 'openai/gpt-4o', name: 'GPT-4o', icon: '✨' },
-  { id: 'anthropic/claude-3-haiku:beta', name: 'Claude 3 Haiku', icon: '🎋' },
-  { id: 'anthropic/claude-3.5-sonnet:beta', name: 'Claude 3.5 Sonnet', icon: '🎭' },
-  { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', icon: '🦙' },
-  { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash', icon: '💎' },
-  { id: 'z-ai/glm-4.5-air:free', name: 'Z.AI: GLM 4.5 Air: Free', icon: '💎' },
-  { id: 'qwen/qwen3-coder:', name: 'Qwen: Qwen3 Coder', icon: '💎' },
-  { id: 'moonshotai/kimi-k2:free', name: 'MoonshotAI: Kimi K2: Free', icon: '💎' },
-  { id: 'meta-llama/llama-3.3-8b-instruct:free', name: 'lamma 3.3 8B', icon: '💎' },
-  { id: 'deepseek/deepseek-r1-0528:free', name: 'Deep Seek (free)', icon: '💎' },
+  // { id: 'openai/gpt-3.5-turbo', name: 'GPT-3.5 Turbo', icon: '🚀' },
+  // { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '🧠' },
+  // { id: 'openai/gpt-4o', name: 'GPT-4o', icon: '✨' },
+  // { id: 'anthropic/claude-3-haiku:beta', name: 'Claude 3 Haiku', icon: '🎋' },
+  // { id: 'anthropic/claude-3.5-sonnet:beta', name: 'Claude 3.5 Sonnet', icon: '🎭' },
+  // { id: 'meta-llama/llama-3.1-8b-instruct:free', name: 'Llama 3.1 8B (Free)', icon: '🦙' },
+  // { id: 'google/gemini-flash-1.5', name: 'Gemini 1.5 Flash', icon: '💎' },
+  // { id: 'z-ai/glm-4.5-air:free', name: 'Z.AI: GLM 4.5 Air: Free', icon: '💎' },
+  // { id: 'qwen/qwen3-coder:', name: 'Qwen: Qwen3 Coder', icon: '💎' },
+  // { id: 'moonshotai/kimi-k2:free', name: 'MoonshotAI: Kimi K2: Free', icon: '💎' },
+  // { id: 'meta-llama/llama-3.3-8b-instruct:free', name: 'lamma 3.3 8B', icon: '💎' },
+  // { id: 'deepseek/deepseek-r1-0528:free', name: 'Deep Seek (free)', icon: '💎' },
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Meta: Llama 3.3 70B Instruct', icon: '💎' },
 ];
 
@@ -80,6 +85,7 @@ export default function Home() {
         role: 'assistant',
         content: data.response,
         model: data.model,
+        usage: data.usage,
         timestamp: new Date()
       };
 
@@ -194,6 +200,8 @@ export default function Home() {
                         <div className="flex items-center text-xs text-gray-500 dark:text-gray-400 mb-2">
                           <span className="mr-1">{getModelInfo(message.model).icon}</span>
                           <span className="font-medium">{getModelInfo(message.model).name}</span>
+                          <span className="text-xs text-gray-400 dark:text-gray-500 ml-2">Total: {message.usage?.total_tokens ? `${message.usage.total_tokens} tokens` : ''}</span>
+                          
                         </div>
                       )}
                       <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed">
