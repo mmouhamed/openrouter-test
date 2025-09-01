@@ -16,13 +16,7 @@ interface ChatMessage {
 }
 
 const MODELS = [
-  { id: 'openai/gpt-4o', name: 'GPT-4o', icon: '✨', provider: 'OpenAI', description: 'Most capable GPT model' },
-  { id: 'openai/gpt-4o-mini', name: 'GPT-4o Mini', icon: '🧠', provider: 'OpenAI', description: 'Fast and efficient' },
-  { id: 'anthropic/claude-3.5-sonnet:beta', name: 'Claude 3.5 Sonnet', icon: '🎭', provider: 'Anthropic', description: 'Excellent for complex reasoning' },
-  { id: 'anthropic/claude-3-haiku:beta', name: 'Claude 3 Haiku', icon: '🎋', provider: 'Anthropic', description: 'Quick and concise responses' },
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', icon: '🦙', provider: 'Meta', description: 'Open-source powerhouse' },
-  { id: 'google/gemini-flash-1.5', name: 'Gemini Flash 1.5', icon: '💎', provider: 'Google', description: 'Fast multimodal AI' },
-  { id: 'deepseek/deepseek-r1-0528:free', name: 'DeepSeek R1', icon: '🔥', provider: 'DeepSeek', description: 'Advanced reasoning model' },
   { id: 'qwen/qwen-2.5-coder-32b-instruct', name: 'Qwen 2.5 Coder', icon: '💻', provider: 'Qwen', description: 'Code-specialized model' },
 ];
 
