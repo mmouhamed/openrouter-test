@@ -11,16 +11,27 @@ interface SidebarItem {
   href: string;
   icon: string;
   badge?: string;
+  description?: string;
+  adminOnly?: boolean;
+  comingSoon?: boolean;
 }
 
-const getNavigationItems = (isUserAdmin: boolean): SidebarItem[] => [
-  { name: 'Home', href: '/', icon: '🏠' },
-  { name: 'Chat', href: '/chat', icon: '💬' },
-  // Add more items here later
-  // { name: 'History', href: '/history', icon: '📜' },
-  // { name: 'Settings', href: '/settings', icon: '⚙️' },
-  // { name: 'Profile', href: '/profile', icon: '👤' },
-];
+const getNavigationItems = (isUserAdmin: boolean): SidebarItem[] => {
+  const items: SidebarItem[] = [
+    { 
+      name: 'Home', 
+      href: '/', 
+      icon: '🏠'
+    },
+    { 
+      name: 'Chat', 
+      href: '/chat', 
+      icon: '💬'
+    }
+  ];
+
+  return items;
+};
 
 export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
@@ -90,6 +101,8 @@ export default function Sidebar() {
                 className={`flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-lg sm:rounded-xl transition-all duration-200 touch-manipulation ${
                   isActive
                     ? 'bg-gradient-to-r from-blue-500/20 to-purple-500/20 dark:from-blue-500/30 dark:to-purple-500/30 text-blue-600 dark:text-blue-400 shadow-sm'
+                    : item.comingSoon
+                    ? 'opacity-50 cursor-not-allowed text-gray-500 dark:text-gray-400'
                     : 'hover:bg-gray-100/50 dark:hover:bg-gray-800/50 text-gray-700 dark:text-gray-300'
                 }`}
               >
@@ -104,25 +117,6 @@ export default function Sidebar() {
             );
           })}
         </nav>
-
-        {/* Future Features Section */}
-        <div className="p-3 sm:p-4 mt-4">
-          <p className="text-xs text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-2 sm:mb-3">Coming Soon</p>
-          <div className="space-y-1.5 sm:space-y-2">
-            <div className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 opacity-50 cursor-not-allowed">
-              <span className="text-lg sm:text-xl flex-shrink-0">📜</span>
-              <span className="font-medium text-sm sm:text-base text-gray-500 dark:text-gray-400 truncate">History</span>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 opacity-50 cursor-not-allowed">
-              <span className="text-lg sm:text-xl flex-shrink-0">⚙️</span>
-              <span className="font-medium text-sm sm:text-base text-gray-500 dark:text-gray-400 truncate">Settings</span>
-            </div>
-            <div className="flex items-center space-x-2 sm:space-x-3 px-3 sm:px-4 py-2 sm:py-3 opacity-50 cursor-not-allowed">
-              <span className="text-lg sm:text-xl flex-shrink-0">👤</span>
-              <span className="font-medium text-sm sm:text-base text-gray-500 dark:text-gray-400 truncate">Profile</span>
-            </div>
-          </div>
-        </div>
 
         {/* Sidebar Footer */}
         <div className="absolute bottom-0 left-0 right-0 p-3 sm:p-4 border-t border-white/20 dark:border-gray-700/50">
