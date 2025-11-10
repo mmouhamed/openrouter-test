@@ -2,18 +2,9 @@
 
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-  model?: string;
-  usage?: {
-    prompt_tokens: number;
-    completion_tokens: number;
-    total_tokens: number;
-  };
-  timestamp: Date;
-}
+import ConversationHistory from '@/components/ConversationHistory';
+import { useAuth } from '@/contexts/AuthContext';
+import { useChat, ChatMessage } from '@/contexts/ChatContext';
 
 const MODELS = [
   { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', icon: '🦙', provider: 'Meta', description: 'Open-source powerhouse' },
@@ -21,16 +12,25 @@ const MODELS = [
 ];
 
 export default function ChatPage() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const { user } = useAuth();
+  const { 
+    activeConversation, 
+    addMessage, 
+    createConversation, 
+    clearActiveConversation 
+  } = useChat();
+  
   const [input, setInput] = useState('');
   const [selectedModel, setSelectedModel] = useState(MODELS[0].id);
-  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [showModelSelector, setShowModelSelector] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [modelChangeToast, setModelChangeToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  
+  const messages = user && activeConversation ? activeConversation.messages : [];
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -63,12 +63,22 @@ export default function ChatPage() {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
-    const userMessage: ChatMessage = { 
+    // Create a new conversation if user is logged in and no active conversation
+    if (user && !activeConversation) {
+      createConversation();
+    }
+
+    const userMessage: Omit<ChatMessage, 'id'> = { 
       role: 'user', 
       content: input,
       timestamp: new Date()
     };
-    setMessages(prev => [...prev, userMessage]);
+    
+    // Add to context if user is logged in, otherwise handle locally
+    if (user) {
+      addMessage(userMessage);
+    }
+    
     setInput('');
     setIsLoading(true);
     setError('');
@@ -92,7 +102,7 @@ export default function ChatPage() {
 
       const data = await response.json();
 
-      const assistantMessage: ChatMessage = {
+      const assistantMessage: Omit<ChatMessage, 'id'> = {
         role: 'assistant',
         content: data.response,
         model: data.model,
@@ -100,7 +110,9 @@ export default function ChatPage() {
         timestamp: new Date()
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      if (user) {
+        addMessage(assistantMessage);
+      }
     } catch (err: unknown) {
       const error = err as { message?: string };
       setError(error.message || 'Something went wrong');
@@ -111,7 +123,9 @@ export default function ChatPage() {
   };
 
   const clearChat = () => {
-    setMessages([]);
+    if (user && activeConversation) {
+      clearActiveConversation();
+    }
     setError('');
     inputRef.current?.focus();
   };
@@ -226,10 +240,15 @@ export default function ChatPage() {
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">ChatQora</h1>
+                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
+                  {user ? `Welcome, ${user.name || user.username}` : 'ChatQora'}
+                </h1>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   <span className="sm:hidden">{getModelInfo(selectedModel).name}</span>
                   <span className="hidden sm:inline">{getModelInfo(selectedModel).provider} • {getModelInfo(selectedModel).name}</span>
+                  {user && activeConversation && (
+                    <span className="hidden sm:inline"> • {activeConversation.title}</span>
+                  )}
                 </p>
               </div>
             </div>
@@ -257,6 +276,19 @@ export default function ChatPage() {
               </div>
               
               {/* Clear Chat - Mobile Optimized */}
+              {/* History Button - Only for authenticated users */}
+              {user && (
+                <button
+                  onClick={() => setShowHistory(!showHistory)}
+                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors touch-manipulation"
+                  title="Chat history"
+                >
+                  <span className="sm:hidden">📜</span>
+                  <span className="hidden sm:inline">History</span>
+                </button>
+              )}
+              
+              {/* Clear Chat */}
               <button
                 onClick={clearChat}
                 disabled={isLoading || messages.length === 0}
@@ -452,6 +484,14 @@ export default function ChatPage() {
           </div>
         </footer>
       </div>
+
+      {/* Conversation History - Only for authenticated users */}
+      {user && (
+        <ConversationHistory 
+          isOpen={showHistory} 
+          onClose={() => setShowHistory(false)} 
+        />
+      )}
     </AppLayout>
   );
 }
