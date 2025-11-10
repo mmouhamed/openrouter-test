@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import ConversationHistory from '@/components/ConversationHistory';
+import MessageDisplay from '@/components/MessageDisplay';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, ChatMessage } from '@/contexts/ChatContext';
 
@@ -138,13 +139,6 @@ export default function ChatPage() {
     }
   };
 
-  const formatTime = (date: Date) => {
-    return date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit',
-      hour12: true 
-    });
-  };
 
   const getModelInfo = (modelId: string) => {
     return MODELS.find(m => m.id === modelId) || MODELS[0];
@@ -152,7 +146,7 @@ export default function ChatPage() {
 
   return (
     <AppLayout>
-      <div className="flex flex-col h-screen max-w-5xl mx-auto relative">
+      <div className="flex flex-col h-screen relative">
         {/* Model Selector Dropdown - Fixed Positioned */}
         {showModelSelector && (
           <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20">
@@ -229,10 +223,10 @@ export default function ChatPage() {
         )}
 
         {/* Mobile-First Header */}
-        <header className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm safe-area-top">
-          <div className="flex items-center justify-between p-3 sm:p-4 lg:p-6">
-            <div className="flex items-center space-x-2 sm:space-x-4 flex-1 min-w-0">
-              <div className="w-6 h-6 sm:w-8 sm:h-8 flex-shrink-0">
+        <header className="flex-shrink-0 border-b border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm">
+          <div className="flex items-center justify-between p-3 sm:p-4">
+            <div className="flex items-center space-x-2 sm:space-x-3 flex-1 min-w-0">
+              <div className="w-6 h-6 sm:w-7 sm:h-7 flex-shrink-0">
                 <img 
                   src="/chatbot-icon.svg" 
                   alt="ChatQora Logo" 
@@ -240,73 +234,78 @@ export default function ChatPage() {
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-base sm:text-lg font-semibold text-gray-900 dark:text-white truncate">
-                  {user ? `Welcome, ${user.name || user.username}` : 'ChatQora'}
+                <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white truncate">
+                  {user ? `${user.name || user.username}` : 'ChatQora'}
                 </h1>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  <span className="sm:hidden">{getModelInfo(selectedModel).name}</span>
-                  <span className="hidden sm:inline">{getModelInfo(selectedModel).provider} • {getModelInfo(selectedModel).name}</span>
-                  {user && activeConversation && (
-                    <span className="hidden sm:inline"> • {activeConversation.title}</span>
-                  )}
-                </p>
+                {user && activeConversation && (
+                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                    {activeConversation.title}
+                  </p>
+                )}
               </div>
             </div>
             
-            <div className="flex items-center space-x-1 sm:space-x-3 flex-shrink-0">
-              {/* Model Selector with Fixed Positioning */}
-              <div className="relative">
-                <button
-                  onClick={() => setShowModelSelector(!showModelSelector)}
-                  className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
-                  disabled={isLoading}
-                  title={`Current model: ${getModelInfo(selectedModel).name}`}
-                >
-                  <span className="text-sm sm:text-base">{getModelInfo(selectedModel).icon}</span>
-                  <span className="text-xs sm:text-sm truncate max-w-16 sm:max-w-24">{getModelInfo(selectedModel).name}</span>
-                  <svg 
-                    className={`w-3 h-3 sm:w-4 sm:h-4 text-gray-500 flex-shrink-0 transition-transform duration-200 ${showModelSelector ? 'rotate-180' : ''}`} 
-                    fill="none" 
-                    stroke="currentColor" 
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
-              </div>
-              
-              {/* Clear Chat - Mobile Optimized */}
-              {/* History Button - Only for authenticated users */}
+            <div className="flex items-center space-x-1 flex-shrink-0">
+              {/* History Button - Mobile First for authenticated users */}
               {user && (
                 <button
                   onClick={() => setShowHistory(!showHistory)}
-                  className="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors touch-manipulation"
-                  title="Chat history"
+                  className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                    showHistory 
+                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400' 
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  title={showHistory ? "Close history" : "Open chat history"}
                 >
-                  <span className="sm:hidden">📜</span>
-                  <span className="hidden sm:inline">History</span>
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    {showHistory ? (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    ) : (
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    )}
+                  </svg>
                 </button>
               )}
               
-              {/* Clear Chat */}
+              {/* Model Selector - Mobile Optimized */}
+              <button
+                onClick={() => setShowModelSelector(!showModelSelector)}
+                className="flex items-center space-x-1 px-2 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
+                disabled={isLoading}
+                title={`Current model: ${getModelInfo(selectedModel).name}`}
+              >
+                <span className="text-sm">{getModelInfo(selectedModel).icon}</span>
+                <span className="hidden sm:block text-xs truncate max-w-20">{getModelInfo(selectedModel).name}</span>
+                <svg 
+                  className={`w-3 h-3 text-gray-500 transition-transform duration-200 ${showModelSelector ? 'rotate-180' : ''}`} 
+                  fill="none" 
+                  stroke="currentColor" 
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              
+              {/* Clear Chat - Mobile Icon Only */}
               <button
                 onClick={clearChat}
                 disabled={isLoading || messages.length === 0}
-                className="px-2 sm:px-3 py-2 text-xs sm:text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors touch-manipulation"
+                className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors touch-manipulation"
                 title="Clear conversation"
               >
-                <span className="sm:hidden">✕</span>
-                <span className="hidden sm:inline">Clear</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
               </button>
             </div>
           </div>
         </header>
 
-        {/* Chat Messages - Mobile Optimized */}
-        <main className="flex-1 overflow-y-auto overscroll-contain">
+        {/* Chat Messages - Mobile First */}
+        <main className="flex-1 overflow-y-auto">
           {messages.length === 0 ? (
-            <div className="h-full flex items-center justify-center px-3 sm:px-4 py-6">
-              <div className="max-w-sm sm:max-w-md text-center">
+            <div className="h-full flex items-center justify-center px-4 py-6">
+              <div className="max-w-sm text-center">
                 <div className="w-12 h-12 sm:w-16 sm:h-16 mx-auto mb-4 sm:mb-6">
                   <img 
                     src="/chatbot-icon.svg" 
@@ -343,73 +342,44 @@ export default function ChatPage() {
               </div>
             </div>
           ) : (
-            <div className="max-w-3xl mx-auto px-3 sm:px-4 py-3 sm:py-6 space-y-4 sm:space-y-6">
+            <div className="px-4 py-4">
               {messages.map((message, index) => (
-                <div key={index} className="group relative">
-                  {message.role === 'user' ? (
-                    <div className="flex justify-end">
-                      <div className="max-w-[85%] sm:max-w-[80%] bg-blue-600 text-white rounded-2xl rounded-br-md px-3 sm:px-4 py-2 sm:py-3">
-                        <div className="text-sm whitespace-pre-wrap break-words">{message.content}</div>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="flex space-x-2 sm:space-x-4">
-                      <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-1">
-                        <span className="text-xs sm:text-sm">{getModelInfo(message.model || selectedModel).icon}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2 flex-wrap">
-                          <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                            {getModelInfo(message.model || selectedModel).name}
-                          </span>
-                          {message.usage && (
-                            <span className="text-xs text-gray-500 dark:text-gray-400 hidden sm:inline">
-                              {message.usage.total_tokens} tokens
-                            </span>
-                          )}
-                          <span className="text-xs text-gray-400 dark:text-gray-500">
-                            {formatTime(message.timestamp)}
-                          </span>
-                        </div>
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <div className="text-sm text-gray-800 dark:text-gray-200 whitespace-pre-wrap break-words leading-relaxed">
-                            {message.content}
-                          </div>
-                        </div>
-                        <div className="flex items-center space-x-2 mt-2 sm:mt-3 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={() => copyMessage(message.content)}
-                            className="text-xs text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 flex items-center space-x-1 px-2 py-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded touch-manipulation"
-                          >
-                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                            </svg>
-                            <span className="hidden sm:inline">Copy</span>
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                <MessageDisplay
+                  key={index}
+                  message={message}
+                  getModelInfo={getModelInfo}
+                  onCopy={copyMessage}
+                />
               ))}
               
               {isLoading && (
-                <div className="flex space-x-2 sm:space-x-4">
-                  <div className="w-6 h-6 sm:w-8 sm:h-8 bg-gray-100 dark:bg-gray-800 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5 sm:mt-1">
-                    <span className="text-xs sm:text-sm">{getModelInfo(selectedModel).icon}</span>
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center space-x-1 sm:space-x-2 mb-1 sm:mb-2">
-                      <span className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white">
-                        {getModelInfo(selectedModel).name}
+                <div className="mb-6">
+                  <div className="flex space-x-3">
+                    {/* AI Avatar */}
+                    <div className="w-8 h-8 bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-full flex items-center justify-center flex-shrink-0">
+                      <span className="text-sm font-medium text-gray-600 dark:text-gray-300">
+                        {getModelInfo(selectedModel).icon}
                       </span>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">thinking...</span>
                     </div>
-                    <div className="flex items-center space-x-2 text-gray-600 dark:text-gray-400">
-                      <div className="flex space-x-1">
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
-                        <div className="w-2 h-2 bg-current rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+
+                    <div className="flex-1 min-w-0">
+                      {/* Typing Header */}
+                      <div className="flex items-center space-x-2 mb-2">
+                        <span className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                          {getModelInfo(selectedModel).name}
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">
+                          thinking...
+                        </span>
+                      </div>
+
+                      {/* Typing Indicator */}
+                      <div className="flex items-center space-x-1">
+                        <div className="flex space-x-1">
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                          <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -434,7 +404,7 @@ export default function ChatPage() {
 
         {/* Mobile-First Input Area */}
         <footer className="border-t border-gray-200 dark:border-gray-800 bg-white/95 dark:bg-gray-950/95 backdrop-blur-sm safe-area-bottom">
-          <div className="max-w-3xl mx-auto p-3 sm:p-4">
+          <div className="p-4">
             <form onSubmit={sendMessage} className="flex items-end space-x-2 sm:space-x-4">
               <div className="flex-1 relative">
                 <textarea
