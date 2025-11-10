@@ -350,6 +350,9 @@ export default function ChatPage() {
                   {contextStats && (
                     <span className="hidden sm:inline bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
                       {contextStats.size} msgs • ~{contextStats.tokens} tokens
+                      {activeConversation?.memoryEnabled && (
+                        <span className="ml-1 text-purple-600 dark:text-purple-400">• Advanced</span>
+                      )}
                     </span>
                   )}
                 </div>

@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { useAuth } from './AuthContext';
 import { MemoryManager, ConversationMemory } from '@/lib/memory/MemoryManager';
+import { AdvancedContextEngine } from '@/lib/context/AdvancedContextEngine';
 
 export interface ChatMessage {
   id: string;
@@ -54,6 +55,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     summaryThreshold: 25,
     compressionTarget: 0.4,
     semanticSearchThreshold: 0.6
+  }));
+  const [contextEngine] = useState(() => new AdvancedContextEngine({
+    maxContextTokens: 8000,
+    optimalContextTokens: 6000,
+    importanceThreshold: 0.3,
+    recencyWeight: 0.4,
+    relevanceWeight: 0.4,
+    importanceWeight: 0.2
   }));
   const { user } = useAuth();
 
@@ -239,17 +248,31 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     const conversation = conversations.find(conv => conv.id === activeConversationId);
     if (!conversation) return [];
 
-    if (!conversation.memoryEnabled) {
-      // Return traditional sliding window
-      return conversation.messages.slice(-20);
-    }
-
     try {
-      const optimizedContext = await memoryManager.getOptimizedContext(
-        conversation.id,
-        conversation.messages,
-        query
-      );
+      let optimizedContext: ChatMessage[];
+
+      if (!conversation.memoryEnabled) {
+        // Use basic sliding window for non-memory conversations
+        optimizedContext = conversation.messages.slice(-20);
+      } else {
+        // Use advanced context engine for memory-enabled conversations
+        optimizedContext = await contextEngine.getOptimizedContext(
+          conversation.id,
+          conversation.messages,
+          query || '',
+          undefined // Could pass user preferences here
+        );
+        
+        // Fallback to memory manager if advanced engine fails
+        if (optimizedContext.length === 0) {
+          console.warn('Advanced context engine returned empty context, falling back to memory manager');
+          optimizedContext = await memoryManager.getOptimizedContext(
+            conversation.id,
+            conversation.messages,
+            query
+          );
+        }
+      }
 
       // Mark conversation as context optimized
       setConversations(prev =>
