@@ -31,7 +31,6 @@ export default function ChatPage() {
   const [modelChangeToast, setModelChangeToast] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const modelSelectorRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -41,21 +40,23 @@ export default function ChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  // Close model selector when clicking outside
+  // Handle ESC key and prevent body scroll when modal is open
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (modelSelectorRef.current && !modelSelectorRef.current.contains(event.target as Node)) {
-        setShowModelSelector(false);
-      }
-    };
-
     if (showModelSelector) {
-      document.addEventListener('mousedown', handleClickOutside);
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') {
+          setShowModelSelector(false);
+        }
+      };
+      
+      document.addEventListener('keydown', handleEscape);
+      document.body.style.overflow = 'hidden';
+      
+      return () => {
+        document.removeEventListener('keydown', handleEscape);
+        document.body.style.overflow = 'unset';
+      };
     }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
   }, [showModelSelector]);
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -142,7 +143,10 @@ export default function ChatPage() {
         {showModelSelector && (
           <div className="fixed inset-0 z-50 flex items-start justify-center pt-16 sm:pt-20">
             <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" onClick={() => setShowModelSelector(false)}></div>
-            <div className="relative w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-96 overflow-hidden mx-4">
+            <div 
+              className="relative w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-2xl max-h-96 overflow-hidden mx-4"
+              onClick={(e) => e.stopPropagation()}
+            >
               <div className="p-4 border-b border-gray-200 dark:border-gray-700">
                 <div className="flex items-center justify-between">
                   <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Select AI Model</h3>
@@ -232,7 +236,7 @@ export default function ChatPage() {
             
             <div className="flex items-center space-x-1 sm:space-x-3 flex-shrink-0">
               {/* Model Selector with Fixed Positioning */}
-              <div className="relative" ref={modelSelectorRef}>
+              <div className="relative">
                 <button
                   onClick={() => setShowModelSelector(!showModelSelector)}
                   className="flex items-center space-x-1 sm:space-x-2 px-2 sm:px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition-colors touch-manipulation"
