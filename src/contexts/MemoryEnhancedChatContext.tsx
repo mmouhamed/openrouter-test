@@ -27,7 +27,7 @@ export interface Conversation {
   contextOptimized?: boolean;
 }
 
-interface ChatContextType {
+interface MemoryEnhancedChatContextType {
   conversations: Conversation[];
   activeConversationId: string | null;
   activeConversation: Conversation | null;
@@ -43,9 +43,9 @@ interface ChatContextType {
   toggleMemoryForConversation: (id: string) => void;
 }
 
-const ChatContext = createContext<ChatContextType | undefined>(undefined);
+const MemoryEnhancedChatContext = createContext<MemoryEnhancedChatContextType | undefined>(undefined);
 
-export function ChatProvider({ children }: { children: ReactNode }) {
+export function MemoryEnhancedChatProvider({ children }: { children: ReactNode }) {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [memoryManager] = useState(() => new MemoryManager({
@@ -57,57 +57,64 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   }));
   const { user } = useAuth();
 
-  // Load conversations from localStorage when user logs in
+  // Load conversations and memory data from localStorage
   useEffect(() => {
     if (user) {
+      loadUserData();
+    } else {
+      clearUserData();
+    }
+  }, [user]);
+
+  // Save conversations and memory whenever they change
+  useEffect(() => {
+    if (user && conversations.length > 0) {
+      saveUserData();
+    }
+  }, [conversations, user]);
+
+  const loadUserData = useCallback(() => {
+    if (!user) return;
+
+    try {
+      // Load conversations
       const savedConversations = localStorage.getItem(`conversations_${user.id}`);
       if (savedConversations) {
-        try {
-          const parsed = JSON.parse(savedConversations);
-          const conversationsWithDates = parsed.map((conv: any) => ({
-            ...conv,
-            createdAt: new Date(conv.createdAt),
-            updatedAt: new Date(conv.updatedAt),
-            memoryEnabled: conv.memoryEnabled ?? false, // Default to false for backward compatibility
-            messages: conv.messages.map((msg: any) => ({
-              ...msg,
-              timestamp: new Date(msg.timestamp)
-            }))
-          }));
-          setConversations(conversationsWithDates);
+        const parsed = JSON.parse(savedConversations);
+        const conversationsWithDates = parsed.map((conv: any) => ({
+          ...conv,
+          createdAt: new Date(conv.createdAt),
+          updatedAt: new Date(conv.updatedAt),
+          memoryEnabled: conv.memoryEnabled ?? true, // Default to enabled
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        setConversations(conversationsWithDates);
 
-          // Load memory data
-          const savedMemory = localStorage.getItem(`memory_${user.id}`);
-          if (savedMemory) {
-            const memoryData = JSON.parse(savedMemory);
-            Object.values(memoryData).forEach((memory: any) => {
-              memoryManager.importMemory(memory);
-            });
-          }
+        // Load memory data
+        const savedMemory = localStorage.getItem(`memory_${user.id}`);
+        if (savedMemory) {
+          const memoryData = JSON.parse(savedMemory);
+          Object.values(memoryData).forEach((memory: any) => {
+            memoryManager.importMemory(memory);
+          });
+        }
 
-          // Set active conversation to the most recent one
-          if (conversationsWithDates.length > 0) {
-            const mostRecent = conversationsWithDates.reduce((latest: Conversation, current: Conversation) => 
-              current.updatedAt > latest.updatedAt ? current : latest
-            );
-            setActiveConversationId(mostRecent.id);
-          }
-        } catch (error) {
-          console.error('Error loading conversations:', error);
+        // Set active conversation to the most recent one
+        if (conversationsWithDates.length > 0) {
+          const mostRecent = conversationsWithDates.reduce((latest: Conversation, current: Conversation) => 
+            current.updatedAt > latest.updatedAt ? current : latest
+          );
+          setActiveConversationId(mostRecent.id);
         }
       }
-    } else {
-      // Clear conversations when user logs out
-      setConversations([]);
-      setActiveConversationId(null);
-      // Clear all memory
-      conversations.forEach(conv => {
-        memoryManager.clearMemory(conv.id);
-      });
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
   }, [user, memoryManager]);
 
-  // Save conversations and memory data to localStorage whenever they change
   const saveUserData = useCallback(() => {
     if (!user) return;
 
@@ -131,13 +138,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     }
   }, [user, conversations, memoryManager]);
 
-  useEffect(() => {
-    if (user && conversations.length > 0) {
-      saveUserData();
-    }
-  }, [conversations, user, saveUserData]);
+  const clearUserData = useCallback(() => {
+    setConversations([]);
+    setActiveConversationId(null);
+    // Clear all memory
+    conversations.forEach(conv => {
+      memoryManager.clearMemory(conv.id);
+    });
+  }, [conversations, memoryManager]);
 
-  const createConversation = (title?: string, enableMemory: boolean = false): string => {
+  const createConversation = (title?: string, enableMemory: boolean = true): string => {
     if (!user) return '';
 
     const newConversation: Conversation = {
@@ -154,12 +164,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     return newConversation.id;
   };
 
-  const addMessage = (message: Omit<ChatMessage, 'id'>) => {
+  const addMessage = async (message: Omit<ChatMessage, 'id'>) => {
     if (!user || !activeConversationId) return;
 
     const messageWithId: ChatMessage = {
       ...message,
-      id: Date.now().toString(),
+      id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       timestamp: message.timestamp || new Date()
     };
 
@@ -303,7 +313,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
   const activeConversation = conversations.find(conv => conv.id === activeConversationId) || null;
 
   return (
-    <ChatContext.Provider value={{
+    <MemoryEnhancedChatContext.Provider value={{
       conversations,
       activeConversationId,
       activeConversation,
@@ -319,14 +329,14 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       toggleMemoryForConversation
     }}>
       {children}
-    </ChatContext.Provider>
+    </MemoryEnhancedChatContext.Provider>
   );
 }
 
-export function useChat() {
-  const context = useContext(ChatContext);
+export function useMemoryEnhancedChat() {
+  const context = useContext(MemoryEnhancedChatContext);
   if (context === undefined) {
-    throw new Error('useChat must be used within a ChatProvider');
+    throw new Error('useMemoryEnhancedChat must be used within a MemoryEnhancedChatProvider');
   }
   return context;
 }

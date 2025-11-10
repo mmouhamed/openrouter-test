@@ -8,7 +8,8 @@ const users = [
     username: 'admin',
     email: 'admin@chatqora.com',
     password: 'admin123', // For demo purposes - use hashing in production
-    name: 'ChatQora Admin'
+    name: 'ChatQora Admin',
+    role: 'admin'
   }
 ];
 
@@ -46,7 +47,8 @@ export async function POST(request: NextRequest) {
         userId: user.id, 
         username: user.username, 
         email: user.email,
-        name: user.name 
+        name: user.name,
+        role: user.role
       },
       process.env.JWT_SECRET || 'fallback-secret',
       { expiresIn: '7d' }
@@ -59,7 +61,8 @@ export async function POST(request: NextRequest) {
         id: user.id,
         username: user.username,
         email: user.email,
-        name: user.name
+        name: user.name,
+        role: user.role
       }
     });
 

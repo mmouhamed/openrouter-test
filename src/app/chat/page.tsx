@@ -4,21 +4,26 @@ import { useState, useRef, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import ConversationHistory from '@/components/ConversationHistory';
 import MessageDisplay from '@/components/MessageDisplay';
+import MemoryDashboard from '@/components/MemoryDashboard';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, ChatMessage } from '@/contexts/ChatContext';
 
 const MODELS = [
-  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', icon: '🦙', provider: 'Meta', description: 'Open-source powerhouse' },
-  { id: 'qwen/qwen-2.5-coder-32b-instruct', name: 'Qwen 2.5 Coder', icon: '💻', provider: 'Qwen', description: 'Code-specialized model' },
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'Llama 3.3 70B', icon: '🦙', provider: 'Meta', description: 'Free 70B parameter powerhouse' },
+  { id: 'meta-llama/llama-3.2-11b-vision-instruct:free', name: 'Llama 3.2 Vision', icon: '👁️', provider: 'Meta', description: 'Free vision & text model' },
+  { id: 'microsoft/phi-3-mini-128k-instruct:free', name: 'Phi-3 Mini', icon: '⚡', provider: 'Microsoft', description: 'Free lightweight model' },
+  { id: 'google/gemma-2-9b-it:free', name: 'Gemma 2 9B', icon: '💎', provider: 'Google', description: 'Free Google model' },
 ];
 
 export default function ChatPage() {
-  const { user } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { 
     activeConversation, 
     addMessage, 
     createConversation, 
-    clearActiveConversation 
+    clearActiveConversation,
+    getOptimizedContext,
+    toggleMemoryForConversation
   } = useChat();
   
   const [input, setInput] = useState('');
@@ -28,6 +33,10 @@ export default function ChatPage() {
   const [showModelSelector, setShowModelSelector] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [modelChangeToast, setModelChangeToast] = useState<string | null>(null);
+  const [showMemoryDashboard, setShowMemoryDashboard] = useState(false);
+  const [contextStats, setContextStats] = useState<{ size: number; tokens: number } | null>(null);
+  const [abortController, setAbortController] = useState<AbortController | null>(null);
+  const timeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
@@ -40,6 +49,7 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
 
   // Handle ESC key and prevent body scroll when modal is open
   useEffect(() => {
@@ -80,21 +90,64 @@ export default function ChatPage() {
       addMessage(userMessage);
     }
     
+    const currentInput = input;
     setInput('');
     setIsLoading(true);
     setError('');
+    setContextStats(null);
 
     try {
+      // Get optimized context using memory system if enabled
+      let optimizedContext: any[] = [];
+      try {
+        const contextResult = user && activeConversation && activeConversation.memoryEnabled
+          ? await Promise.race([
+              getOptimizedContext(currentInput),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Memory context timeout')), 5000)
+              )
+            ])
+          : [];
+        optimizedContext = Array.isArray(contextResult) ? contextResult : [];
+      } catch (memoryError) {
+        console.warn('Memory system error, falling back to recent messages:', memoryError);
+        // Fallback to recent messages if memory fails
+        optimizedContext = user && activeConversation 
+          ? activeConversation.messages.slice(-10)
+          : [];
+      }
+
+      // Update context stats
+      if (optimizedContext.length > 0) {
+        const contextTokens = optimizedContext.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0);
+        setContextStats({ size: optimizedContext.length, tokens: contextTokens });
+      }
+
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      setAbortController(controller);
+      timeoutIdRef.current = setTimeout(() => {
+        if (!controller.signal.aborted) {
+          controller.abort();
+        }
+      }, 60000); // 60 second timeout for free models (they can be slower)
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        signal: controller.signal,
         body: JSON.stringify({
-          message: input,
-          model: selectedModel
+          message: currentInput,
+          model: selectedModel,
+          conversationContext: optimizedContext,
+          systemPrompt: activeConversation?.memoryEnabled 
+            ? 'You are an AI assistant with access to conversation memory and context. Use the provided context to give more relevant and personalized responses.'
+            : undefined
         })
       });
+
 
       if (!response.ok) {
         const errorData = await response.json();
@@ -114,13 +167,59 @@ export default function ChatPage() {
       if (user) {
         addMessage(assistantMessage);
       }
+
+      // Update context stats with response info
+      if (data.contextSize) {
+        setContextStats({ 
+          size: data.contextSize, 
+          tokens: data.estimatedTokens || 0 
+        });
+      }
     } catch (err: unknown) {
-      const error = err as { message?: string };
-      setError(error.message || 'Something went wrong');
-      console.error('Error:', error.message);
+      const error = err as { message?: string; name?: string };
+      
+      // Handle different types of errors gracefully
+      if (error.name === 'AbortError' || error.message?.includes('aborted') || error.message?.includes('terminated')) {
+        setError('Request timed out. Please try again.');
+      } else if (error.message?.includes('Failed to get response from AI')) {
+        setError('AI service is temporarily unavailable. Please try again.');
+      } else {
+        setError(error.message || 'Something went wrong');
+      }
+      
+      // Only log actual errors, not user-initiated aborts
+      if (error.name !== 'AbortError' && !error.message?.includes('aborted')) {
+        console.error('Error:', error.message);
+      }
     } finally {
+      // Clean up timeout and abort controller
+      if (timeoutIdRef.current) {
+        clearTimeout(timeoutIdRef.current);
+        timeoutIdRef.current = null;
+      }
       setIsLoading(false);
+      setAbortController(null);
     }
+  };
+
+  const stopGeneration = () => {
+    if (abortController) {
+      try {
+        abortController.abort();
+      } catch (e) {
+        // Ignore abort errors
+      }
+    }
+    
+    // Clean up timeout
+    if (timeoutIdRef.current) {
+      clearTimeout(timeoutIdRef.current);
+      timeoutIdRef.current = null;
+    }
+    
+    setAbortController(null);
+    setIsLoading(false);
+    setError('Generation stopped by user');
   };
 
   const clearChat = () => {
@@ -234,18 +333,60 @@ export default function ChatPage() {
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white truncate">
-                  {user ? `${user.name || user.username}` : 'ChatQora'}
-                </h1>
-                {user && activeConversation && (
-                  <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                    {activeConversation.title}
-                  </p>
-                )}
+                <div className="flex items-center space-x-2">
+                  <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-white truncate">
+                    {user ? `${user.name || user.username}` : 'ChatQora'}
+                  </h1>
+                  {activeConversation?.memoryEnabled && (
+                    <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded-full font-medium">
+                      🧠 Memory
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+                  {user && activeConversation && (
+                    <span className="truncate">{activeConversation.title}</span>
+                  )}
+                  {contextStats && (
+                    <span className="hidden sm:inline bg-gray-100 dark:bg-gray-700 px-2 py-0.5 rounded">
+                      {contextStats.size} msgs • ~{contextStats.tokens} tokens
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             
             <div className="flex items-center space-x-1 flex-shrink-0">
+              {/* Memory Toggle - Admin Only */}
+              {user && isAdmin() && activeConversation && (
+                <button
+                  onClick={() => toggleMemoryForConversation(activeConversation.id)}
+                  className={`p-2 rounded-lg transition-colors touch-manipulation ${
+                    activeConversation.memoryEnabled 
+                      ? 'bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400' 
+                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                  title={activeConversation.memoryEnabled ? "Disable memory" : "Enable memory"}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                  </svg>
+                </button>
+              )}
+
+              {/* Memory Dashboard - Admin Only with Memory Enabled */}
+              {user && isAdmin() && activeConversation?.memoryEnabled && (
+                <button
+                  onClick={() => setShowMemoryDashboard(true)}
+                  className="p-2 rounded-lg transition-colors touch-manipulation text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20"
+                  title="Memory Dashboard"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                  </svg>
+                </button>
+              )}
+
               {/* History Button - Mobile First for authenticated users */}
               {user && (
                 <button
@@ -417,7 +558,7 @@ export default function ChatPage() {
                       sendMessage(e);
                     }
                   }}
-                  placeholder="Message ChatQora..."
+                  placeholder={activeConversation?.memoryEnabled ? "Message with memory..." : "Message ChatQora..."}
                   rows={1}
                   className="w-full px-3 sm:px-4 py-2.5 sm:py-3 pr-10 sm:pr-12 bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 text-sm sm:text-base transition-all resize-none overflow-hidden min-h-[44px] max-h-[120px]"
                   disabled={isLoading}
@@ -431,24 +572,36 @@ export default function ChatPage() {
                     target.style.height = Math.min(target.scrollHeight, 120) + 'px';
                   }}
                 />
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="absolute right-1.5 sm:right-2 bottom-2 sm:bottom-2.5 w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-colors disabled:cursor-not-allowed touch-manipulation"
-                >
-                  {isLoading ? (
-                    <div className="w-3 h-3 sm:w-4 sm:h-4 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>
-                  ) : (
+                {isLoading ? (
+                  <button
+                    type="button"
+                    onClick={stopGeneration}
+                    className="absolute right-1.5 sm:right-2 bottom-2 sm:bottom-2.5 w-7 h-7 sm:w-8 sm:h-8 bg-red-600 hover:bg-red-700 text-white rounded-lg flex items-center justify-center transition-colors touch-manipulation"
+                    title="Stop generation"
+                  >
+                    <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 6h12v12H6z" />
+                    </svg>
+                  </button>
+                ) : (
+                  <button
+                    type="submit"
+                    disabled={!input.trim()}
+                    className="absolute right-1.5 sm:right-2 bottom-2 sm:bottom-2.5 w-7 h-7 sm:w-8 sm:h-8 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-colors disabled:cursor-not-allowed touch-manipulation"
+                  >
                     <svg className="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                     </svg>
-                  )}
-                </button>
+                  </button>
+                )}
               </div>
             </form>
             <div className="flex items-center justify-center mt-2 sm:mt-3">
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center px-2">
-                ChatQora may produce inaccurate information about people, places, or facts.
+                {activeConversation?.memoryEnabled 
+                  ? 'Enhanced with AI memory for personalized conversations'
+                  : 'ChatQora may produce inaccurate information about people, places, or facts.'
+                }
               </p>
             </div>
           </div>
@@ -460,6 +613,14 @@ export default function ChatPage() {
         <ConversationHistory 
           isOpen={showHistory} 
           onClose={() => setShowHistory(false)} 
+        />
+      )}
+
+      {/* Memory Dashboard - Only for admins */}
+      {user && isAdmin() && (
+        <MemoryDashboard 
+          isOpen={showMemoryDashboard} 
+          onClose={() => setShowMemoryDashboard(false)} 
         />
       )}
     </AppLayout>

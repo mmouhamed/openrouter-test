@@ -13,7 +13,7 @@ interface SidebarItem {
   badge?: string;
 }
 
-const sidebarItems: SidebarItem[] = [
+const getNavigationItems = (isUserAdmin: boolean): SidebarItem[] => [
   { name: 'Home', href: '/', icon: '🏠' },
   { name: 'Chat', href: '/chat', icon: '💬' },
   // Add more items here later
@@ -26,7 +26,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const pathname = usePathname();
-  const { user, logout, loading } = useAuth();
+  const { user, logout, loading, isAdmin } = useAuth();
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
@@ -80,7 +80,7 @@ export default function Sidebar() {
 
         {/* Navigation Items */}
         <nav className="p-3 sm:p-4 space-y-1.5 sm:space-y-2">
-          {sidebarItems.map((item) => {
+          {getNavigationItems(isAdmin()).map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link

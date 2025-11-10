@@ -149,13 +149,13 @@ NEXTAUTH_SECRET=your-secret-key
 
 ## 🤖 **AVAILABLE AI MODELS**
 
-Support for 15+ premium AI models:
-- **OpenAI**: GPT-4o, GPT-4, GPT-3.5 Turbo
-- **Anthropic**: Claude 3.5 Sonnet, Claude 3.5 Haiku  
-- **Meta**: Llama 3.1 70B, Llama 2 70B
-- **Google**: Gemini 1.5 Pro, Gemini Flash
-- **Mistral**: Mistral 7B, Mixtral 8x7B
-- **And many more...**
+Support for top-tier **FREE** AI models:
+- **Meta**: Llama 3.3 70B Instruct (Free), Llama 3.2 Vision (Free)
+- **Microsoft**: Phi-3 Mini 128K (Free)  
+- **Google**: Gemma 2 9B (Free)
+- **High Performance**: 70B parameter models with enterprise-level capabilities
+- **Vision Support**: Multi-modal models for image and text processing
+- **All models are completely free to use**
 
 ## 🎨 **UI/UX FEATURES**
 
