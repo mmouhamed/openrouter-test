@@ -67,7 +67,7 @@ We've successfully rebuilt your chat system from scratch with a clean, robust ar
 
 ### ✅ **Smart Model Routing**
 - **Phoenix Core (Llama 3.3)**: Fast general responses, creative tasks
-- **Oracle Core (GPT-4)**: Complex analysis, technical explanations  
+- **Oracle Core (WizardLM 2 8x22B)**: Complex analysis, technical explanations  
 - **Iris Core (Qwen2.5-VL)**: Vision processing, multimodal content
 - Automatic routing based on query complexity and content type
 

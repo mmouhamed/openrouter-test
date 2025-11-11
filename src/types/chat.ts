@@ -226,6 +226,6 @@ export interface ProcessingIndicator {
 // Events
 export interface ChatEvent {
   type: 'message' | 'typing' | 'error' | 'system' | 'health';
-  data: any;
+  data: unknown;
   timestamp: Date;
 }

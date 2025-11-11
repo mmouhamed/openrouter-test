@@ -59,14 +59,24 @@ export class SmartChatAgent {
       reasoning: 'basic'
     },
     {
-      id: 'gpt-4',
-      name: 'GPT-4',
+      id: 'microsoft/wizardlm-2-8x22b:free',
+      name: 'WizardLM 2 8x22B',
       strengths: ['creativity', 'nuanced_understanding', 'complex_reasoning', 'writing'],
-      weaknesses: ['cost', 'speed'],
+      weaknesses: ['speed'],
       optimalTokenRange: [50, 6000],
-      costEfficiency: 'low',
+      costEfficiency: 'high',
       speed: 'medium',
       reasoning: 'expert'
+    },
+    {
+      id: 'openai/gpt-oss-20b:free',
+      name: 'GPT OSS 20B',
+      strengths: ['balanced_performance', 'general_tasks', 'coding', 'analysis'],
+      weaknesses: ['specialized_domains'],
+      optimalTokenRange: [30, 4000],
+      costEfficiency: 'high',
+      speed: 'medium',
+      reasoning: 'advanced'
     }
   ];
 

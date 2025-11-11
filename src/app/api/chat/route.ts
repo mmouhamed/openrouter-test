@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { performWebSearch, createSearchContext, shouldUseWebSearch } from '@/utils/webSearch';
+import { FusionEngine } from '@/lib/FusionEngine';
 
 // Response sanitization function
 function sanitizeResponse(response: string): string {
@@ -141,7 +142,7 @@ export async function GET(request: NextRequest) {
           models: {
             'meta-llama/llama-3.3-70b-instruct:free': { status: 'online' },
             'meta-llama/llama-3.3-8b-instruct:free': { status: 'online' },
-            'gpt-4': { status: 'online' }
+            'openai/gpt-oss-20b:free': { status: 'online' }
           },
           overall: {
             status: 'optimal',
@@ -212,7 +213,7 @@ export async function POST(request: NextRequest) {
     const { 
       message, 
       attachments = [],
-      model = 'meta-llama/llama-3.3-70b-instruct:free',
+      model = 'AI Fusion', // Default to fusion
       conversationContext = [],
       systemPrompt,
       enableWebSearch = false,
@@ -225,7 +226,8 @@ export async function POST(request: NextRequest) {
       contextLength: conversationContext.length,
       attachmentsCount: attachments.length,
       enableWebSearch,
-      maxSources
+      maxSources,
+      fusionMode: 'Always AI Fusion'
     });
 
     if (!message && (!attachments || attachments.length === 0)) {
@@ -259,6 +261,53 @@ export async function POST(request: NextRequest) {
       } else if (webSearchResults.error) {
         console.warn('Web search failed:', webSearchResults.error);
       }
+    }
+
+    // Always use AI Fusion as the default architecture
+    console.log('Processing AI Fusion request (default architecture)');
+    
+    const fusionEngine = new FusionEngine();
+    
+    try {
+      const fusionResult = await fusionEngine.processFusionQueryWithFallback({
+        query: message,
+        conversationContext: conversationContext.map((msg: { role: string; content: string }) => ({
+          role: msg.role,
+          content: searchContext ? `${msg.content}\n\nWeb Context: ${searchContext}` : msg.content
+        })),
+        fusionStrategy: 'consensus' as 'consensus' | 'specialized' | 'iterative',
+        includeIndividualResponses: true,
+        timeout: 45000 // Reduced timeout for better UX
+      });
+
+      // Generate dynamic recommendations for fusion response
+      const dynamicRecommendations = await generateDynamicRecommendations(
+        message,
+        fusionResult.fusedResponse,
+        conversationContext
+      );
+
+      return NextResponse.json({
+        response: sanitizeResponse(fusionResult.fusedResponse),
+        model: 'AI Fusion',
+        sources: webSearchResults?.sources || [],
+        webSearchUsed: shouldSearch,
+        dynamicRecommendations,
+        fusion: {
+          strategy: fusionResult.fusionStrategy,
+          modelsUsed: fusionResult.modelsUsed,
+          individualResponses: fusionResult.individualResponses,
+          processingTime: fusionResult.processingTime,
+          confidence: fusionResult.confidence,
+          qualityScore: fusionResult.metadata.qualityScore
+        },
+        metadata: fusionResult.metadata,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (fusionError) {
+      console.error('AI Fusion failed, using fallback:', fusionError);
+      // The processFusionQueryWithFallback already handles fallback, but in case of total failure:
     }
 
     // Build messages array with optional system prompt and conversation context

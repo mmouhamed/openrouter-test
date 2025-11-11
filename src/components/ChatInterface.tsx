@@ -3,6 +3,9 @@
 import { useState, useRef, useEffect } from 'react';
 import { Message, SystemHealth, QueryAnalysis, RoutingDecision } from '@/types/chat';
 import { smartChatAgent, SmartRecommendation } from '@/lib/SmartChatAgent';
+import RichMessageRenderer from './RichMessageRenderer';
+import FusionProgress from './FusionProgress';
+import FusionComparison from './FusionComparison';
 
 interface ChatInterfaceProps {
   className?: string;
@@ -31,7 +34,14 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [usageHints, setUsageHints] = useState<string[]>([]);
   const [queryAnalysis, setQueryAnalysis] = useState<QueryAnalysis | null>(null);
   const [, setRoutingDecision] = useState<RoutingDecision | null>(null);
-  const [selectedModel, setSelectedModel] = useState<string>('auto');
+  const [selectedModel] = useState<string>('AI Fusion'); // Always use AI Fusion
+  // const [showIndividualResponses, setShowIndividualResponses] = useState<boolean>(false);
+  const [fusionProgress] = useState<{
+    stage: 'initializing' | 'querying' | 'synthesizing' | 'completed' | 'error';
+    modelProgress: { [modelId: string]: number };
+    synthesisProgress: number;
+    message: string;
+  } | null>(null);
   const [showRecommendations, setShowRecommendations] = useState<boolean>(false);
   const [lastRecommendationUpdate, setLastRecommendationUpdate] = useState<Date | null>(null);
 
@@ -240,7 +250,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         },
         body: JSON.stringify({
           message: userMessage.content,
-          model: modelToUse,
+          model: 'AI Fusion',
           enableWebSearch: webSearchEnabled,
           maxSources: 5,
           conversationContext: [...messages, userMessage].slice(-6).map(msg => ({
@@ -276,10 +286,11 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           metadata: {
             model: data.model,
             processingTime: Date.now() - startTime,
-            confidence: smartAnalysis.routing.confidence,
+            confidence: data.fusion ? data.fusion.confidence : smartAnalysis.routing.confidence,
             sources: data.sources || [],
             analysis: smartAnalysis.analysis,
-            routing: smartAnalysis.routing
+            routing: smartAnalysis.routing,
+            fusion: data.fusion || null
           }
         };
         setMessages(prev => [...prev, assistantMessage]);
@@ -394,7 +405,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
               </h1>
               <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                <span>3 AI Models Online</span>
+                <span>4 AI Models Online</span>
                 {confidence > 0 && (
                   <>
                     <span>•</span>
@@ -426,17 +437,11 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
               </span>
             </div>
 
-            {/* Model Selector - Responsive */}
-            <select
-              value={selectedModel}
-              onChange={(e) => setSelectedModel(e.target.value)}
-              className="px-2 lg:px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-0 flex-shrink touch-manipulation"
-            >
-              <option value="auto">🎯 Smart</option>
-              <option value="meta-llama/llama-3.3-70b-instruct:free">🧠 70B</option>
-              <option value="meta-llama/llama-3.3-8b-instruct:free">⚡ 8B</option>
-              <option value="gpt-4">✨ GPT-4</option>
-            </select>
+            {/* AI Fusion Status Display */}
+            <div className="px-2 lg:px-3 py-2 bg-gradient-to-r from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 border border-purple-200 dark:border-purple-600 rounded-lg text-xs lg:text-sm font-medium text-purple-700 dark:text-purple-300 flex items-center space-x-2 min-w-0 flex-shrink">
+              <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse"></div>
+              <span>🧠 AI Fusion Active</span>
+            </div>
 
             {/* Web Search Toggle - Responsive */}
             <button
@@ -555,13 +560,19 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         ? 'bg-blue-600 text-white' 
                         : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
                     }`}>
-                      <div className={`prose prose-sm max-w-none ${
-                        message.role === 'user' 
-                          ? 'prose-invert' 
-                          : 'prose-gray dark:prose-invert'
-                      }`}>
-                        {message.content}
-                      </div>
+                      {message.role === 'user' ? (
+                        <div className="prose prose-sm max-w-none prose-invert">
+                          {message.content}
+                        </div>
+                      ) : (
+                        <RichMessageRenderer
+                          content={message.content}
+                          role={message.role}
+                          messageId={message.id}
+                          enableImageSearch={true}
+                          enableInteractiveElements={true}
+                        />
+                      )}
                       {message.metadata?.processingTime && (
                         <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 text-xs text-gray-500 dark:text-gray-400">
                           Processed in {message.metadata.processingTime}ms
@@ -634,12 +645,25 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                           </div>
                         </div>
                       )}
+                      
+                      {/* Fusion Comparison */}
+                      {message.metadata.fusion && (
+                        <FusionComparison 
+                          fusionData={message.metadata.fusion} 
+                          fusedResponse={message.content}
+                        />
+                      )}
                     </div>
                   </div>
                 </div>
               </div>
             ))}
             
+            {/* Fusion Progress */}
+            {fusionProgress && (
+              <FusionProgress progress={fusionProgress} />
+            )}
+
             {isLoading && (
               <div className="mb-6">
                 <div className="flex justify-start">
@@ -779,7 +803,10 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     {smartRecommendations.map((rec) => (
                       <button
                         key={rec.id}
-                        onClick={() => useSuggestion(rec.text)}
+                        onClick={() => {
+                          setInput(rec.text);
+                          setShowRecommendations(false);
+                        }}
                         className="w-full p-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-600 rounded-lg text-left transition-colors group/item"
                       >
                         <div className="flex items-start justify-between">
@@ -889,7 +916,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           <div className="flex items-center space-x-2 sm:space-x-3">
             <span className="flex items-center space-x-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span className="hidden sm:inline">Phoenix, Oracle, Iris Cores Online</span>
+              <span className="hidden sm:inline">Phoenix, Oracle, Wizard, GPT Cores Online</span>
               <span className="sm:hidden">AI Online</span>
             </span>
             {systemHealth?.overall.score && (
