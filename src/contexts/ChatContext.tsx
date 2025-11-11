@@ -123,14 +123,16 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       }
     } else {
       // Clear conversations when user logs out
-      setConversations([]);
-      setActiveConversationId(null);
-      // Clear all memory
-      conversations.forEach(conv => {
-        memoryManager.clearMemory(conv.id);
+      setConversations(prev => {
+        // Clear all memory for existing conversations
+        prev.forEach(conv => {
+          memoryManager.clearMemory(conv.id);
+        });
+        return [];
       });
+      setActiveConversationId(null);
     }
-  }, [user, memoryManager, conversations]);
+  }, [user, memoryManager]);
 
   // Save conversations and memory data to localStorage whenever they change
   const saveUserData = useCallback(() => {
