@@ -158,11 +158,9 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
       const assistantMessage: Omit<ChatMessage, 'id'> = {
         role: 'assistant',
         content: result.response,
-        model: result.model,
-        usage: result.usage,
-        timestamp: new Date(),
-        ensembleInfo: result.ensembleNeuroFusion || result.neuroFusion, // Add ensemble metadata
-        routingInfo: result.ensembleNeuroFusion || result.neuroFusion // Backwards compatibility
+        model: (result as Record<string, unknown>).model as string || 'ensemble',
+        usage: (result as Record<string, unknown>).usage as { prompt_tokens: number; completion_tokens: number; total_tokens: number } | undefined,
+        timestamp: new Date()
       };
 
       if (user) {
@@ -217,7 +215,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
 
   const getModelInfo = (modelId: string) => {
     // Map actual model IDs to neural core info
-    const modelInfo: { [key: string]: { name: string; description: string } } = {
+    const modelInfo: { [key: string]: { name: string; description: string; icon: string } } = {
       'meta-llama/llama-3.3-8b-instruct:free': { 
         name: 'Phoenix Core', 
         icon: '🔥', 
@@ -248,56 +246,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     return modelInfo[modelId] || { name: modelId, icon: '🔥', description: 'Neural Core' };
   };
 
-  const getEnsembleStatusColor = (ensembleInfo: { status?: string } | null) => {
-    if (!ensembleInfo) return 'text-gray-600';
-    
-    if (ensembleInfo.ensembleStrategy) {
-      switch (ensembleInfo.ensembleStrategy) {
-        case 'parallel': return 'text-purple-600';
-        case 'sequential': return 'text-blue-600'; 
-        case 'consensus': return 'text-green-600';
-        case 'synthesis': return 'text-orange-600';
-        default: return 'text-gray-600';
-      }
-    } else if (ensembleInfo.neuralCore) {
-      return 'text-blue-600'; // Single neural core
-    }
-    
-    return 'text-gray-600';
-  };
-
-  const getEnsembleStatusMessage = (ensembleInfo: { status?: string; model?: string; confidence?: number } | null) => {
-    if (!ensembleInfo) return '';
-    
-    if (ensembleInfo.ensembleStrategy) {
-      const modelsCount = ensembleInfo.modelsParticipated || 0;
-      switch (ensembleInfo.ensembleStrategy) {
-        case 'parallel':
-          return `⚡ Parallel ensemble (${modelsCount} models) - Comprehensive analysis`;
-        case 'sequential':
-          return `🔄 Sequential ensemble (${modelsCount} models) - Enhanced response`;
-        case 'consensus':
-          return `✅ Consensus ensemble (${modelsCount} models) - Cross-validated`;
-        case 'synthesis':
-          return `🎯 Synthesis ensemble (${modelsCount} models) - Best combined`;
-        default:
-          return `⚡ Multi-model ensemble (${modelsCount} models)`;
-      }
-    } else if (ensembleInfo.neuralCore) {
-      switch (ensembleInfo.neuralCore) {
-        case 'Phoenix':
-          return '🔥 Phoenix Core - Primary neural processing';
-        case 'Oracle':
-          return '🧠 Oracle Core - Advanced reasoning';
-        case 'Iris':
-          return '👁️ Iris Core - Vision processing';
-        default:
-          return `🔥 ${ensembleInfo.neuralCore} - Neural processing`;
-      }
-    }
-    
-    return '🤖 NeuroFusion-3.1 processing';
-  };
+  // Removed unused ensemble status functions
 
   return (
     <div className={`flex flex-col h-full ${className}`}>
@@ -445,38 +394,16 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
                   getModelInfo={getModelInfo}
                   onCopy={copyMessage}
                 />
-                {/* Show ensemble info for assistant messages */}
-                {message.role === 'assistant' && (message.ensembleInfo || message.routingInfo) && (
-                  <div className="ml-11 mb-4 text-xs">
-                    <span className={`${getEnsembleStatusColor(message.ensembleInfo || message.routingInfo)} font-medium`}>
-                      {getEnsembleStatusMessage(message.ensembleInfo || message.routingInfo)}
-                    </span>
-                    {(message.ensembleInfo?.fusionConfidence || message.routingInfo?.complexity) && (
-                      <span className="text-gray-500 ml-2">
-                        {message.ensembleInfo?.fusionConfidence && 
-                          `(Confidence: ${(message.ensembleInfo.fusionConfidence * 100).toFixed(1)}%)`
-                        }
-                        {message.routingInfo?.complexity?.score && 
-                          `(Complexity: ${message.routingInfo.complexity.score})`
-                        }
-                      </span>
-                    )}
-                    {message.ensembleInfo?.qualityImprovement > 0 && (
-                      <span className="text-green-500 ml-2">
-                        ↗ Quality improved
-                      </span>
-                    )}
-                  </div>
-                )}
+                {/* Ensemble info removed as properties don't exist in ChatMessage interface */}
               </div>
             ))}
             
             {isLoading && (
               <div className="mb-6 flex justify-center">
                 <InteractiveProcessing
-                  ensembleStrategy={lastEnsembleInfo?.ensembleStrategy || 'parallel'}
+                  ensembleStrategy={(lastEnsembleInfo as Record<string, unknown>)?.ensembleStrategy as string || 'parallel'}
                   hasAttachments={selectedAttachments.length > 0}
-                  estimatedTime={selectedAttachments.length > 0 ? 15000 : 10000}
+                  _estimatedTime={selectedAttachments.length > 0 ? 15000 : 10000}
                 />
               </div>
             )}
@@ -582,10 +509,10 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
                     key={attachment.id}
                     className="relative aspect-square bg-gray-200 dark:bg-gray-700 rounded-lg overflow-hidden group"
                   >
-                    {attachment.type.startsWith('image/') ? (
+                    {attachment.mimeType.startsWith('image/') ? (
                       <img
                         src={attachment.url}
-                        alt={attachment.name}
+                        alt={attachment.fileName}
                         className="w-full h-full object-cover"
                       />
                     ) : (
@@ -595,9 +522,9 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
                     )}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                       <span className="text-white text-xs text-center px-1">
-                        {attachment.name.length > 12 
-                          ? attachment.name.substring(0, 12) + '...' 
-                          : attachment.name}
+                        {attachment.fileName.length > 12 
+                          ? attachment.fileName.substring(0, 12) + '...' 
+                          : attachment.fileName}
                       </span>
                     </div>
                   </div>

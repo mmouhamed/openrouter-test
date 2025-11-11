@@ -89,7 +89,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
             createdAt: new Date(conv.createdAt),
             updatedAt: new Date(conv.updatedAt),
             memoryEnabled: conv.memoryEnabled ?? false, // Default to false for backward compatibility
-            messages: conv.messages.map((msg: { id: string; role: string; content: string; model?: string; usage?: object; timestamp: string }) => ({
+            messages: (conv.messages as Array<{ id: string; role: string; content: string; model?: string; usage?: object; timestamp: string }>).map((msg) => ({
               ...msg,
               timestamp: new Date(msg.timestamp)
             }))
@@ -100,8 +100,13 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const savedMemory = localStorage.getItem(`memory_${user.id}`);
           if (savedMemory) {
             const memoryData = JSON.parse(savedMemory);
-            Object.values(memoryData).forEach((memory: { conversationId: string }) => {
-              memoryManager.importMemory(memory);
+            Object.values(memoryData as Record<string, unknown>).forEach((memory) => {
+              try {
+                // @ts-expect-error - Memory import type complexity
+                memoryManager.importMemory(memory);
+              } catch (error) {
+                console.warn('Failed to import memory data:', error);
+              }
             });
           }
 

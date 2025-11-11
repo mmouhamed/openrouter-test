@@ -5,7 +5,7 @@ import ImagePreview from './ImagePreview';
 
 interface MessageDisplayProps {
   message: ChatMessage;
-  getModelInfo: (modelId: string) => { name?: string; description?: string };
+  getModelInfo: (modelId: string) => { name?: string; description?: string; icon?: string };
   onCopy: (content: string) => void;
 }
 
