@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     const processingTime = Date.now() - startTime;
 
     // Get model display names
-    const modelNames = {
+    const modelNames: Record<string, string> = {
       'meta-llama/llama-3.3-8b-instruct:free': 'Phoenix Core',
       'openai/gpt-oss-20b:free': 'Oracle Core',
       'qwen/qwen2.5-vl-32b-instruct:free': 'Iris Core'
@@ -164,11 +164,12 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('❌ Clean Chat Error:', error);
     
+    const err = error as Error;
     return NextResponse.json(
       { 
         success: false,
         error: 'Failed to process message',
-        details: process.env.NODE_ENV === 'development' ? error.message : 'Internal server error'
+        details: process.env.NODE_ENV === 'development' ? err.message : 'Internal server error'
       },
       { status: 500 }
     );
@@ -244,7 +245,7 @@ function calculateQualityScore(response: string, strategy: string): number {
   let score = 0.7; // Base score
   
   // Strategy bonuses
-  const strategyBonuses = {
+  const strategyBonuses: Record<string, number> = {
     single: 0.1,
     sequential: 0.15,
     parallel: 0.2,

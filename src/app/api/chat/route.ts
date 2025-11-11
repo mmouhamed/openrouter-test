@@ -1,6 +1,130 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { performWebSearch, createSearchContext, shouldUseWebSearch } from '@/utils/webSearch';
 
+// Response sanitization function
+function sanitizeResponse(response: string): string {
+  // Replace URLs with safe placeholders
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  let sanitized = response.replace(urlRegex, (match) => {
+    // Extract domain for context
+    try {
+      const url = new URL(match);
+      const domain = url.hostname.replace('www.', '');
+      return `[Search "${domain}" for more information]`;
+    } catch {
+      return '[Search for more information]';
+    }
+  });
+
+  // Add temporal disclaimer if discussing future events
+  const futureKeywords = ['2025', '2026', 'will be', 'will have', 'upcoming', 'future', 'next year'];
+  const hasFutureContent = futureKeywords.some(keyword => 
+    sanitized.toLowerCase().includes(keyword.toLowerCase())
+  );
+
+  if (hasFutureContent) {
+    sanitized += '\n\n*Note: Future predictions are speculative and based on current trends. Actual developments may vary.*';
+  }
+
+  return sanitized;
+}
+
+// Dynamic recommendation generation using LLM
+async function generateDynamicRecommendations(
+  userQuestion: string, 
+  aiResponse: string, 
+  conversationContext: Array<{ role: string; content: string; model?: string }>
+) {
+  try {
+    // Create a focused prompt for generating contextual recommendations
+    const contextSummary = conversationContext.length > 0 
+      ? conversationContext.map(msg => `${msg.role}: ${msg.content}`).join('\n')
+      : 'No previous context';
+
+    const recommendationPrompt = `You are an intelligent conversation assistant. Based on the conversation below, generate 4 FRESH, contextual follow-up questions that build specifically on what was just discussed.
+
+CONVERSATION CONTEXT:
+${contextSummary}
+
+MOST RECENT EXCHANGE:
+User: ${userQuestion}
+Assistant: ${aiResponse.substring(0, 500)}...
+
+Generate 4 NEW, intelligent follow-up questions that:
+1. Build directly on the specific content that was just discussed
+2. Explore practical implementations, edge cases, or deeper insights
+3. Consider related aspects that would naturally come next
+4. Are highly specific to THIS conversation (avoid generic questions)
+5. Help the user dive deeper into the topic or apply what they learned
+
+Each question should feel like a natural continuation of the conversation.
+
+Format as JSON array:
+[
+  {
+    "text": "Specific follow-up question based on the actual response content",
+    "category": "follow_up|deeper|practical|alternative", 
+    "reasoning": "Why this specific question would be valuable given what was just discussed"
+  }
+]
+
+Focus on being contextual and specific - not generic. Timestamp: ${Date.now()}`;
+
+    const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+        'HTTP-Referer': 'https://your-app.pages.dev',
+        'X-Title': 'AI Chat Hub - Recommendations'
+      },
+      body: JSON.stringify({
+        model: 'meta-llama/llama-3.3-8b-instruct:free', // Use fast model for recommendations
+        messages: [
+          {
+            role: 'user',
+            content: recommendationPrompt
+          }
+        ],
+        temperature: 0.7,
+        max_tokens: 800
+      })
+    });
+
+    if (!response.ok) {
+      console.warn('Failed to generate dynamic recommendations, falling back to empty array');
+      return [];
+    }
+
+    const data = await response.json();
+    const recommendationsText = data.choices[0].message.content;
+    
+    // Parse the JSON response
+    try {
+      const recommendations = JSON.parse(recommendationsText);
+      
+      // Add confidence scores and IDs  
+      return recommendations.map((rec: {
+        text: string;
+        category?: string;
+        reasoning?: string;
+      }, index: number) => ({
+        id: `dynamic_${Date.now()}_${index}`,
+        text: rec.text,
+        category: rec.category || 'follow_up',
+        reasoning: rec.reasoning || 'AI-generated contextual suggestion',
+        confidence: 0.85 + (Math.random() * 0.1) // 85-95% confidence for LLM recommendations
+      }));
+    } catch (parseError) {
+      console.warn('Failed to parse recommendations JSON:', parseError);
+      return [];
+    }
+  } catch (error) {
+    console.warn('Error generating dynamic recommendations:', error);
+    return [];
+  }
+}
+
 // Add edge runtime configuration for Cloudflare compatibility
 export const runtime = 'edge';
 
@@ -120,20 +244,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Perform web search if enabled and relevant
+    let webSearchResults = null;
+    let searchContext = '';
+    const shouldSearch = enableWebSearch && message && shouldUseWebSearch(message);
+    
+    if (shouldSearch) {
+      console.log('Performing web search for query:', message.substring(0, 100));
+      webSearchResults = await performWebSearch(message, maxSources);
+      
+      if (webSearchResults.success && webSearchResults.sources.length > 0) {
+        searchContext = createSearchContext(webSearchResults.sources, message);
+        console.log(`Web search completed: ${webSearchResults.sources.length} sources found`);
+      } else if (webSearchResults.error) {
+        console.warn('Web search failed:', webSearchResults.error);
+      }
+    }
+
     // Build messages array with optional system prompt and conversation context
     const messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
     
-    // Add system prompt if provided
-    if (systemPrompt) {
-      messages.push({
-        role: 'system',
-        content: systemPrompt
-      });
+    // Add system prompt with current date and temporal guidelines
+    const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+    let enhancedSystemPrompt = systemPrompt || `You are a helpful AI assistant.
+
+TEMPORAL GUIDELINES:
+- Current date: ${currentDate}
+- When discussing future events, clearly state they are predictions/expectations
+- Never claim certainty about future developments
+- If asked about "latest" or "recent" developments, only reference information from your training data cutoff
+- When providing links or sources, always use placeholder text like "[Search for X]" instead of generating URLs
+- If you're unsure about timing of events, ask for clarification rather than guessing
+
+LINK POLICY:
+- NEVER generate actual URLs (https://example.com)
+- Use descriptive placeholders like "[Search for latest AI developments 2024]"
+- Suggest search terms instead of providing direct links
+- If referencing sources, describe them without providing URLs`;
+
+    if (searchContext) {
+      enhancedSystemPrompt += '\n\n' + searchContext;
     }
     
+    messages.push({
+      role: 'system',
+      content: enhancedSystemPrompt
+    });
+    
+    // Check for corrections in recent context
+    const hasRecentCorrections = conversationContext.some((msg: any) => msg.isCorrection);
+    if (hasRecentCorrections) {
+      enhancedSystemPrompt += '\n\nIMPORTANT: The user has recently made corrections. Be extra careful about temporal accuracy and avoid generating URLs. Acknowledge any corrections gracefully and provide accurate information.';
+    }
+
     // Add conversation context if provided
     if (conversationContext && Array.isArray(conversationContext) && conversationContext.length > 0) {
-      conversationContext.forEach((msg: { role: string; content: string; attachments?: Array<{ base64?: string; url?: string }> }) => {
+      conversationContext.forEach((msg: { role: string; content: string; attachments?: Array<{ base64?: string; url?: string }>; isCorrection?: boolean }) => {
         if (msg.attachments && msg.attachments.length > 0) {
           // For context messages with attachments, format for vision models
           const content = [
@@ -215,14 +381,38 @@ export async function POST(request: NextRequest) {
     }
 
     const data = await response.json();
-    const aiResponse = data.choices[0].message.content;
+    let aiResponse = data.choices[0].message.content;
+
+    // Post-process response to sanitize links and add disclaimers
+    aiResponse = sanitizeResponse(aiResponse);
+
+    // Generate dynamic recommendations using the LLM
+    console.log('🔄 Generating fresh recommendations for response:', {
+      userMessagePreview: message.substring(0, 50),
+      responsePreview: aiResponse.substring(0, 50),
+      contextLength: conversationContext.length
+    });
+    
+    const recommendations = await generateDynamicRecommendations(
+      message,
+      aiResponse,
+      conversationContext.slice(-3) // Last 3 exchanges for context
+    );
+
+    console.log('✨ Generated recommendations:', {
+      count: recommendations.length,
+      preview: recommendations.map(r => r.text.substring(0, 30))
+    });
 
     return NextResponse.json({
       response: aiResponse,
       model: model,
       usage: data.usage,
       contextSize: messages.length,
-      estimatedTokens: messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0)
+      estimatedTokens: messages.reduce((acc, msg) => acc + Math.ceil(msg.content.length / 4), 0),
+      sources: webSearchResults?.sources || [],
+      webSearchUsed: shouldSearch && webSearchResults?.success,
+      dynamicRecommendations: recommendations
     });
 
   } catch (error: unknown) {

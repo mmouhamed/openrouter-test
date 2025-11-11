@@ -29,6 +29,28 @@ export interface MessageMetadata {
   fusion?: FusionMetadata;
   sources?: WebSource[];
   context?: ContextMetadata;
+  analysis?: QueryAnalysis; // QueryAnalysis from SmartChatAgent
+  routing?: RoutingDecision; // RoutingDecision from SmartChatAgent
+  isCorrection?: boolean; // Flag for user correction messages
+}
+
+export interface QueryAnalysis {
+  complexity: 'simple' | 'medium' | 'complex';
+  domain: string;
+  requiresReasoning: boolean;
+  requiresCreativity: boolean;
+  requiresSpeed: boolean;
+  estimatedTokens: number;
+  keywords: string[];
+  intent: 'question' | 'task' | 'creative' | 'technical' | 'analysis';
+}
+
+export interface RoutingDecision {
+  primaryModel: string;
+  fallbackModels: string[];
+  strategy: 'single' | 'sequential' | 'ensemble';
+  reasoning: string;
+  confidence: number;
 }
 
 // AI Model Types

@@ -1,7 +1,15 @@
 'use client';
 
 import { useRef, useState, useCallback, useEffect } from 'react';
-import { Attachment } from '@/contexts/ChatContext';
+// Define Attachment interface locally since ChatContext was removed
+export interface Attachment {
+  id: string;
+  type: 'image' | 'file';
+  url?: string;
+  base64?: string;
+  filename: string;
+  size: number;
+}
 
 interface DragDropUploadProps {
   onFileUpload: (attachment: Attachment) => void;

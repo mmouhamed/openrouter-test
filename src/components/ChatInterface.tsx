@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Message, SystemHealth } from '@/types/chat';
+import { Message, SystemHealth, QueryAnalysis, RoutingDecision } from '@/types/chat';
+import { smartChatAgent, SmartRecommendation } from '@/lib/SmartChatAgent';
 
 interface ChatInterfaceProps {
   className?: string;
@@ -20,10 +21,19 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [currentStrategy, setCurrentStrategy] = useState<string>('auto');
   const [processingStage, setProcessingStage] = useState<string>('');
   const [confidence, setConfidence] = useState<number>(0);
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [, setSuggestions] = useState<string[]>([]);
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [activeModel, setActiveModel] = useState<string>('');
   const [thinkingDots, setThinkingDots] = useState<number>(1);
+  
+  // Smart Agent features
+  const [smartRecommendations, setSmartRecommendations] = useState<SmartRecommendation[]>([]);
+  const [usageHints, setUsageHints] = useState<string[]>([]);
+  const [queryAnalysis, setQueryAnalysis] = useState<QueryAnalysis | null>(null);
+  const [, setRoutingDecision] = useState<RoutingDecision | null>(null);
+  const [selectedModel, setSelectedModel] = useState<string>('auto');
+  const [showRecommendations, setShowRecommendations] = useState<boolean>(false);
+  const [lastRecommendationUpdate, setLastRecommendationUpdate] = useState<Date | null>(null);
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -36,16 +46,48 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     // Load system health on mount
     fetchSystemHealth();
     
+    // Load usage hints
+    loadUsageHints();
+    
     // Focus input
     if (inputRef.current) {
       inputRef.current.focus();
     }
   }, []);
 
+  const loadUsageHints = async () => {
+    try {
+      const hints = smartChatAgent.generateUsageSuggestions({
+        previousQueries: messages.map(m => m.content).slice(-10)
+      });
+      setUsageHints(hints);
+    } catch (error) {
+      console.error('Failed to load usage hints:', error);
+    }
+  };
+
   useEffect(() => {
     // Auto-scroll to bottom
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Close recommendations when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+      if (showRecommendations && !target.closest('.recommendations-container')) {
+        setShowRecommendations(false);
+      }
+    };
+
+    if (showRecommendations) {
+      document.addEventListener('click', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [showRecommendations]);
 
   const fetchSystemHealth = async () => {
     try {
@@ -128,34 +170,69 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    // Check for correction patterns
+    const correctionPatterns = [
+      /actually.*is.*(\d{4})/i,
+      /correct.*date.*is/i,
+      /we.*are.*in.*(\d{4})/i,
+      /current.*year.*is.*(\d{4})/i,
+      /it.*is.*(\d{4})/i,
+      /(no|incorrect).*link/i,
+      /broken.*link/i,
+      /that.*link.*doesn't.*work/i
+    ];
+    
+    const isCorrection = correctionPatterns.some(pattern => pattern.test(input.trim()));
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: 'user',
       content: input.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
+      metadata: {
+        isCorrection
+      }
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsLoading(true);
     setError('');
-    setProcessingStage('Initializing AI cores...');
+    setProcessingStage('Analyzing query with Smart Agent...');
     setProcessingProgress(0);
-    setActiveModel('System');
+    setActiveModel('Smart Agent');
     setSuggestions([]);
+    
+    // Clear old recommendations - fresh ones will be generated after response
+    setSmartRecommendations([]);
 
-    // Start dynamic processing simulation
-    const stageInterval = simulateProcessingStages(userMessage.content);
-    const startTime = Date.now();
+    let stageInterval: NodeJS.Timeout | undefined;
 
     try {
-      // Processing options for future enhancement
-      // const options: ProcessingOptions = {
-      //   enableWebSearch: webSearchEnabled,
-      //   priority: 'quality',
-      //   maxSources: 3
-      // };
+      // Use Smart Agent to analyze query and route to optimal model
+      const smartAnalysis = await smartChatAgent.processQuery(
+        userMessage.content,
+        messages.slice(-5).map(m => m.content)
+      );
 
+      setQueryAnalysis(smartAnalysis.analysis);
+      setRoutingDecision(smartAnalysis.routing);
+      
+      // Update UI with smart insights
+      setProcessingStage(`Smart routing: ${smartAnalysis.routing.reasoning}`);
+      setActiveModel(smartAnalysis.modelRecommendation.split('/').pop()?.split(':')[0] || 'Unknown');
+      
+      // Determine which model to use
+      const modelToUse = selectedModel === 'auto' 
+        ? smartAnalysis.modelRecommendation 
+        : selectedModel;
+
+      setCurrentStrategy(smartAnalysis.routing.strategy);
+      setConfidence(smartAnalysis.routing.confidence);
+
+      // Start dynamic processing simulation
+      stageInterval = simulateProcessingStages(userMessage.content);
+      const startTime = Date.now();
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
@@ -163,7 +240,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         },
         body: JSON.stringify({
           message: userMessage.content,
-          model: 'meta-llama/llama-3.3-8b-instruct:free' // Default model for now
+          model: modelToUse,
+          enableWebSearch: webSearchEnabled,
+          maxSources: 5,
+          conversationContext: [...messages, userMessage].slice(-6).map(msg => ({
+            role: msg.role,
+            content: msg.content,
+            model: msg.metadata?.model,
+            isCorrection: msg.metadata?.isCorrection
+          }))
         }),
       });
 
@@ -174,6 +259,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       const data = await response.json();
       
       if (data.response) {
+        // Debug: Log the sources data
+        console.log('🔍 Web Search Debug Info:', {
+          webSearchEnabled,
+          apiSources: data.sources,
+          sourcesLength: data.sources?.length || 0,
+          webSearchUsed: data.webSearchUsed,
+          hasSourcesArray: Array.isArray(data.sources)
+        });
+
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
@@ -182,18 +276,44 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           metadata: {
             model: data.model,
             processingTime: Date.now() - startTime,
-            confidence: 0.85
+            confidence: smartAnalysis.routing.confidence,
+            sources: data.sources || [],
+            analysis: smartAnalysis.analysis,
+            routing: smartAnalysis.routing
           }
         };
         setMessages(prev => [...prev, assistantMessage]);
-        setCurrentStrategy('single');
-        setConfidence(0.85);
-        setSuggestions([]);
         
-        console.log('💫 Response metadata:', {
+        // Use dynamic LLM-generated recommendations from API
+        const dynamicRecommendations = data.dynamicRecommendations || [];
+        console.log('🔄 Updating recommendations after response:', {
+          newRecommendationsCount: dynamicRecommendations.length,
+          messageCount: messages.length + 1, // +1 for the message we just added
+          conversationContextSent: messages.slice(-5).length
+        });
+        
+        setSmartRecommendations(dynamicRecommendations);
+        setLastRecommendationUpdate(new Date());
+        
+        // Update suggestions with dynamic recommendations
+        setSuggestions(dynamicRecommendations.map((r: SmartRecommendation) => r.text));
+        
+        // Add to smart agent history
+        smartChatAgent.addToHistory('assistant', data.response, data.model, smartAnalysis.analysis);
+        
+        // Update usage hints
+        loadUsageHints();
+        
+        console.log('💫 Enhanced Response metadata:', {
           model: data.model,
-          confidence: 0.85,
-          processingTime: Date.now() - startTime
+          confidence: smartAnalysis.routing.confidence,
+          processingTime: Date.now() - startTime,
+          sourcesCount: data.sources?.length || 0,
+          webSearchUsed: data.webSearchUsed,
+          strategy: smartAnalysis.routing.strategy,
+          dynamicRecommendationsCount: dynamicRecommendations.length,
+          queryComplexity: smartAnalysis.analysis.complexity,
+          recommendationType: 'LLM-generated'
         });
       } else {
         throw new Error(data.error || 'Unknown error');
@@ -202,9 +322,10 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     } catch (error) {
       console.error('Chat error:', error);
       setError((error as Error).message || 'Something went wrong. Please try again.');
-      clearInterval(stageInterval);
     } finally {
-      clearInterval(stageInterval);
+      if (stageInterval) {
+        clearInterval(stageInterval);
+      }
       setIsLoading(false);
       setProcessingStage('');
       setProcessingProgress(0);
@@ -228,6 +349,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const useSuggestion = (suggestion: string) => {
     setInput(suggestion);
     inputRef.current?.focus();
+    setShowRecommendations(false); // Close recommendations dropdown
   };
 
   const getStrategyIcon = (strategy: string) => {
@@ -258,19 +380,19 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   };
 
   return (
-    <div className={`flex flex-col min-h-screen bg-gray-50 dark:bg-gray-900 ${className}`}>
+    <div className={`flex flex-col min-h-screen mobile-vh bg-gray-50 dark:bg-gray-900 overscroll-contain ${className}`}>
       {/* Header */}
-      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-6 py-4">
+      <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-3 sm:py-4 safe-area-top">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
-              <span className="text-white font-bold text-lg">AI</span>
+            <div className="w-8 h-8 sm:w-10 sm:h-10 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-sm sm:text-lg">AI</span>
             </div>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Chat System
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 dark:text-white">
+                ChatQora
               </h1>
-              <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+              <div className="flex items-center space-x-2 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
                 <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
                 <span>3 AI Models Online</span>
                 {confidence > 0 && (
@@ -279,23 +401,47 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                     <span>{Math.round(confidence * 100)}% Confidence</span>
                   </>
                 )}
+                {queryAnalysis && (
+                  <>
+                    <span>•</span>
+                    <span className="capitalize">{queryAnalysis.complexity} Query</span>
+                  </>
+                )}
+                {messages.length > 0 && (
+                  <>
+                    <span>•</span>
+                    <span>{messages.length} Messages</span>
+                  </>
+                )}
               </div>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
-            {/* Strategy Display */}
-            <div className="flex items-center space-x-2 px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
+          <div className="flex items-center space-x-1 sm:space-x-2 lg:space-x-3 flex-wrap gap-1 sm:gap-2">
+            {/* Strategy Display - Hidden on small screens */}
+            <div className="hidden md:flex items-center space-x-2 px-2 lg:px-3 py-1.5 bg-gray-100 dark:bg-gray-700 rounded-lg">
               <span className="text-lg">{getStrategyIcon(currentStrategy)}</span>
               <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
                 {getStrategyName(currentStrategy)}
               </span>
             </div>
 
-            {/* Web Search Toggle */}
+            {/* Model Selector - Responsive */}
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="px-2 lg:px-3 py-2 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-xs lg:text-sm font-medium text-gray-700 dark:text-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500 min-w-0 flex-shrink touch-manipulation"
+            >
+              <option value="auto">🎯 Smart</option>
+              <option value="meta-llama/llama-3.3-70b-instruct:free">🧠 70B</option>
+              <option value="meta-llama/llama-3.3-8b-instruct:free">⚡ 8B</option>
+              <option value="gpt-4">✨ GPT-4</option>
+            </select>
+
+            {/* Web Search Toggle - Responsive */}
             <button
               onClick={() => setWebSearchEnabled(!webSearchEnabled)}
-              className={`flex items-center space-x-2 px-3 py-1.5 rounded-lg transition-colors ${
+              className={`flex items-center space-x-1 lg:space-x-2 px-2 lg:px-3 py-2 rounded-lg transition-colors flex-shrink-0 touch-manipulation ${
                 webSearchEnabled 
                   ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/20 dark:text-blue-300' 
                   : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
@@ -303,7 +449,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
               title={webSearchEnabled ? 'Web search enabled' : 'Web search disabled'}
             >
               <span>{webSearchEnabled ? '🌐' : '📚'}</span>
-              <span className="text-sm font-medium">
+              <span className="text-xs lg:text-sm font-medium">
                 {webSearchEnabled ? 'Web' : 'Local'}
               </span>
             </button>
@@ -311,7 +457,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             {/* Clear Chat */}
             <button
               onClick={clearChat}
-              className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors"
+              className="p-2 text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 transition-colors touch-manipulation"
               title="Clear conversation"
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -374,11 +520,11 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             </div>
           </div>
         ) : (
-          <div className="px-6 py-4">
+          <div className="px-4 sm:px-6 py-4 custom-scrollbar ios-scroll-fix">
             {messages.map((message, index) => (
               <div key={index} className="mb-6">
                 <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  <div className={`max-w-3xl ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
+                  <div className={`max-w-full sm:max-w-3xl chat-message ${message.role === 'user' ? 'order-2' : 'order-1'}`}>
                     {message.role === 'assistant' && (
                       <div className="flex items-center space-x-2 mb-2">
                         <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
@@ -404,7 +550,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         </div>
                       </div>
                     )}
-                    <div className={`p-4 rounded-2xl ${
+                    <div className={`p-3 sm:p-4 rounded-2xl animate-fade-in ${
                       message.role === 'user' 
                         ? 'bg-blue-600 text-white' 
                         : 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700'
@@ -427,6 +573,67 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                           )}
                         </div>
                       )}
+                      
+                      {/* Web Search Sources */}
+                      {(() => {
+                        const sources = message.metadata?.sources;
+                        console.log('🔍 Sources Render Check:', {
+                          messageId: message.id,
+                          messageRole: message.role,
+                          hasSources: !!sources,
+                          sourcesLength: sources?.length || 0,
+                          sourcesArray: sources
+                        });
+                        return sources && sources.length > 0;
+                      })() && (
+                        <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
+                          <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            <span>🌐</span>
+                            <span>Sources:</span>
+                          </div>
+                          <div className="space-y-2">
+                            {message.metadata.sources.slice(0, 3).map((source, index) => (
+                              <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <h4 className="text-sm font-medium text-gray-900 dark:text-white line-clamp-1">
+                                      {source.title}
+                                    </h4>
+                                    <p className="text-xs text-gray-600 dark:text-gray-400 mt-1 line-clamp-2">
+                                      {source.snippet}
+                                    </p>
+                                    <div className="flex items-center space-x-2 mt-2">
+                                      <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+                                        {source.source}
+                                      </span>
+                                      <span className="text-xs text-gray-400">•</span>
+                                      <span className="text-xs text-green-600 dark:text-green-400">
+                                        {Math.round(source.relevance * 100)}% relevant
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <a
+                                    href={source.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="ml-3 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-200 transition-colors"
+                                    title="Open source"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                                    </svg>
+                                  </a>
+                                </div>
+                              </div>
+                            ))}
+                            {message.metadata.sources.length > 3 && (
+                              <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+                                + {message.metadata.sources.length - 3} more sources
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -436,7 +643,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             {isLoading && (
               <div className="mb-6">
                 <div className="flex justify-start">
-                  <div className="max-w-3xl w-full">
+                  <div className="max-w-full sm:max-w-3xl w-full">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-6 h-6 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
                         <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
@@ -450,7 +657,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         </span>
                       )}
                     </div>
-                    <div className="p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl">
+                    <div className="p-3 sm:p-4 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl animate-pulse-glow">
                       {/* Progress Bar */}
                       <div className="mb-3">
                         <div className="flex justify-between items-center mb-1">
@@ -506,21 +713,118 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         )}
       </div>
 
-      {/* Suggestions */}
-      {suggestions.length > 0 && !isLoading && (
+      {/* Smart Recommendations Loading State */}
+      {smartRecommendations.length === 0 && !isLoading && messages.length > 0 && (
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-2">
+          <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
+            <span>🤖</span>
+            <span>Generating fresh AI suggestions...</span>
+            <div className="flex space-x-1">
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.1s'}}></div>
+              <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Smart Recommendations - Hover Icon */}
+      {smartRecommendations.length > 0 && !isLoading && (
+        <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-2">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400">
+              <span>🤖</span>
+              <span>{smartRecommendations.length} AI-generated suggestions</span>
+              {lastRecommendationUpdate && (
+                <span className="text-xs text-green-600 dark:text-green-400">
+                  • Updated {lastRecommendationUpdate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                </span>
+              )}
+              {queryAnalysis && (
+                <span className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded">
+                  {queryAnalysis.complexity} • {queryAnalysis.domain}
+                </span>
+              )}
+            </div>
+            
+            {/* Hover/Click Icon for Recommendations */}
+            <div className="relative group recommendations-container">
+              <button 
+                onClick={() => setShowRecommendations(!showRecommendations)}
+                className="p-2 text-gray-400 hover:text-purple-600 dark:hover:text-purple-400 transition-colors rounded-full hover:bg-purple-50 dark:hover:bg-purple-900/20 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                title="View smart recommendations"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </button>
+              
+              {/* Hover Dropdown with improved positioning - Desktop hover + Mobile click */}
+              <div className={`absolute right-0 top-full mt-2 w-80 sm:w-96 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-xl transition-all duration-200 z-50 max-h-96 overflow-y-auto ${
+                showRecommendations 
+                  ? 'opacity-100 visible' 
+                  : 'opacity-0 invisible group-hover:opacity-100 group-hover:visible'
+              }`}>
+                <div className="p-4">
+                  <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400 mb-3">
+                    <div className="flex items-center space-x-2">
+                      <span>🧠</span>
+                      <span>AI-Generated Suggestions</span>
+                    </div>
+                    <span className="text-xs bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
+                      Dynamic
+                    </span>
+                  </div>
+                  <div className="space-y-2">
+                    {smartRecommendations.map((rec) => (
+                      <button
+                        key={rec.id}
+                        onClick={() => useSuggestion(rec.text)}
+                        className="w-full p-3 bg-gray-50 dark:bg-gray-700/50 hover:bg-purple-50 dark:hover:bg-purple-900/20 border border-gray-200 dark:border-gray-600 hover:border-purple-300 dark:hover:border-purple-600 rounded-lg text-left transition-colors group/item"
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="text-sm font-medium text-gray-900 dark:text-white group-hover/item:text-purple-700 dark:group-hover/item:text-purple-300">
+                              {rec.text}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              {rec.reasoning}
+                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 ml-3">
+                            <span className="text-xs bg-gray-200 dark:bg-gray-600 text-gray-600 dark:text-gray-400 px-2 py-0.5 rounded">
+                              {rec.category}
+                            </span>
+                            <span className="text-xs text-green-600 dark:text-green-400">
+                              {Math.round(rec.confidence * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Usage Hints */}
+      {usageHints.length > 0 && !isLoading && messages.length === 0 && (
         <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-3">
           <div className="flex items-center space-x-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
-            <span>💡</span>
-            <span>Suggestions:</span>
+            <span>✨</span>
+            <span>Try asking:</span>
           </div>
           <div className="flex flex-wrap gap-2">
-            {suggestions.map((suggestion, index) => (
+            {usageHints.map((hint, index) => (
               <button
                 key={index}
-                onClick={() => useSuggestion(suggestion)}
+                onClick={() => setInput(hint)}
                 className="px-3 py-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 transition-colors"
               >
-                {suggestion}
+                {hint}
               </button>
             ))}
           </div>
@@ -540,7 +844,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       )}
 
       {/* Input Area */}
-      <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-6 py-4">
+      <div className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 px-4 sm:px-6 py-4 safe-area-bottom mobile-input-container">
         <form onSubmit={sendMessage} className="flex items-end space-x-3">
           <div className="flex-1 relative">
             <textarea
@@ -553,13 +857,14 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                   sendMessage(e);
                 }
               }}
-              placeholder="Ask anything... The AI will intelligently route your question to the best models."
+              placeholder="Ask anything... AI will route to the best models."
               rows={1}
-              className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none overflow-hidden min-h-[48px] max-h-[120px] transition-colors"
+              className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none overflow-hidden min-h-[48px] max-h-[120px] transition-colors touch-manipulation"
               disabled={isLoading}
               style={{
                 height: 'auto',
-                minHeight: '48px'
+                minHeight: '48px',
+                fontSize: '16px' // Prevents zoom on iOS
               }}
               onInput={(e) => {
                 const target = e.target as HTMLTextAreaElement;
@@ -570,7 +875,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
-              className="absolute right-2 bottom-2 w-8 h-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed shadow-lg"
+              className="absolute right-2 bottom-2 w-10 h-10 sm:w-8 sm:h-8 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-600 text-white rounded-lg flex items-center justify-center transition-all duration-200 disabled:cursor-not-allowed shadow-lg touch-manipulation"
               title="Send message"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -580,11 +885,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
           </div>
         </form>
         
-        <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400">
-          <div className="flex items-center space-x-3">
+        <div className="flex items-center justify-between mt-3 text-xs text-gray-500 dark:text-gray-400 flex-wrap gap-2">
+          <div className="flex items-center space-x-2 sm:space-x-3">
             <span className="flex items-center space-x-1">
               <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-              <span>Phoenix, Oracle, Iris Cores Online</span>
+              <span className="hidden sm:inline">Phoenix, Oracle, Iris Cores Online</span>
+              <span className="sm:hidden">AI Online</span>
             </span>
             {systemHealth?.overall.score && (
               <span className="bg-green-100 dark:bg-green-900/20 text-green-700 dark:text-green-300 px-2 py-0.5 rounded">
@@ -592,10 +898,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
               </span>
             )}
           </div>
-          <div className="flex items-center space-x-2">
-            <span>{webSearchEnabled ? '🌐 Web search active' : '📚 Local processing'}</span>
-            <span>•</span>
-            <span>Enter to send, Shift+Enter for new line</span>
+          <div className="flex items-center space-x-2 text-xs">
+            <span className="hidden sm:inline">{webSearchEnabled ? '🌐 Web search active' : '📚 Local processing'}</span>
+            <span className="sm:hidden">{webSearchEnabled ? '🌐' : '📚'}</span>
+            <span className="hidden sm:inline">•</span>
+            <span className="hidden sm:inline">Enter to send, Shift+Enter for new line</span>
+            <span className="sm:hidden">Tap send</span>
           </div>
         </div>
       </div>

@@ -213,12 +213,29 @@ body {
   
   /* Better mobile chat bubble sizing */
   .chat-message {
-    max-width: 90% !important;
+    max-width: 95% !important;
   }
   
   /* Mobile-specific animations */
   .mobile-fade-in {
     animation: mobile-fade-in 0.2s ease-out;
+  }
+  
+  /* Improved mobile touch targets */
+  button, [role="button"], .touch-target {
+    min-height: 48px;
+    min-width: 48px;
+  }
+  
+  /* Better mobile spacing */
+  .mobile-spacing {
+    padding: 0.75rem;
+  }
+  
+  /* Mobile-friendly text sizing */
+  .mobile-text {
+    font-size: 16px;
+    line-height: 1.5;
   }
 }
 
@@ -287,6 +304,38 @@ body {
 @media (hover: none) and (pointer: coarse) {
   .android-touch-fix {
     -webkit-tap-highlight-color: transparent;
+  }
+  
+  /* Better touch feedback */
+  button:active, .touch-target:active {
+    transform: scale(0.95);
+    transition: transform 0.1s ease;
+  }
+}
+
+/* Enhanced mobile interactions */
+.mobile-optimized {
+  /* Better scroll momentum on mobile */
+  -webkit-overflow-scrolling: touch;
+  
+  /* Improve touch response */
+  touch-action: manipulation;
+  
+  /* Prevent text selection on UI elements */
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* Mobile landscape optimizations */
+@media (max-width: 768px) and (orientation: landscape) {
+  .mobile-landscape {
+    height: 100vh;
+    height: 100dvh; /* Dynamic viewport height for better mobile support */
+  }
+  
+  /* Compact header for landscape */
+  .mobile-landscape .compact-header {
+    padding: 0.5rem;
   }
 }
 
