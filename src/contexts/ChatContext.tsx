@@ -5,10 +5,21 @@ import { useAuth } from './AuthContext';
 import { MemoryManager, ConversationMemory } from '@/lib/memory/MemoryManager';
 import { AdvancedContextEngine } from '@/lib/context/AdvancedContextEngine';
 
+export interface Attachment {
+  id: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  url: string;
+  base64?: string;
+  thumbnailUrl?: string;
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
+  attachments?: Attachment[];
   model?: string;
   usage?: {
     prompt_tokens: number;

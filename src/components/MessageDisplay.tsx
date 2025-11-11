@@ -1,6 +1,7 @@
 'use client';
 
 import { ChatMessage } from '@/contexts/ChatContext';
+import ImagePreview from './ImagePreview';
 
 interface MessageDisplayProps {
   message: ChatMessage;
@@ -85,10 +86,25 @@ export default function MessageDisplay({ message, getModelInfo, onCopy }: Messag
 
   if (message.role === 'user') {
     return (
-      <div className="flex justify-end mb-4">
-        <div className="max-w-[80%] bg-gradient-to-br from-blue-600 to-blue-700 text-white rounded-2xl rounded-br-md px-4 py-3 shadow-sm">
-          <div className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-            {message.content}
+      <div className="flex justify-end mb-6">
+        <div className="max-w-[85%]">
+          {/* Show attachments if they exist */}
+          {message.attachments && message.attachments.length > 0 && (
+            <div className="mb-3">
+              <ImagePreview 
+                attachments={message.attachments} 
+                onRemove={() => {}} 
+                showRemoveButton={false}
+              />
+            </div>
+          )}
+          <div className="bg-gray-100 dark:bg-gray-700 rounded-2xl px-4 py-3">
+            <div className="text-gray-900 dark:text-white leading-relaxed whitespace-pre-wrap break-words">
+              {message.content}
+            </div>
+          </div>
+          <div className="text-xs text-gray-500 dark:text-gray-400 mt-2 text-right">
+            {formatTime(message.timestamp)}
           </div>
         </div>
       </div>
@@ -96,88 +112,64 @@ export default function MessageDisplay({ message, getModelInfo, onCopy }: Messag
   }
 
   return (
-    <div className="group mb-8 relative">
-      {/* Message Container with subtle background */}
-      <div className="flex space-x-4 p-6 rounded-2xl bg-gradient-to-br from-slate-50/50 to-gray-50/30 dark:from-slate-800/30 dark:to-gray-800/20 border border-gray-100/50 dark:border-gray-700/30 hover:shadow-lg hover:shadow-gray-200/20 dark:hover:shadow-gray-900/20 transition-all duration-300">
-        
-        {/* Enhanced AI Avatar */}
-        <div className="relative">
-          <div className="w-10 h-10 bg-gradient-to-br from-indigo-500 via-purple-500 to-pink-500 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg">
-            <span className="text-base font-medium text-white drop-shadow-sm">
-              {getModelInfo(message.model || '').icon || '🤖'}
-            </span>
+    <div className="group mb-6">
+      <div className="flex space-x-4 hover:bg-gray-50/50 dark:hover:bg-gray-800/30 rounded-lg px-4 py-3 transition-colors">
+        {/* Clean AI Avatar */}
+        <div className="flex-shrink-0">
+          <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
+            <span className="text-white font-bold text-sm">C</span>
           </div>
-          {/* Subtle glow effect */}
-          <div className="absolute -inset-1 bg-gradient-to-br from-indigo-400 via-purple-400 to-pink-400 rounded-xl blur-sm opacity-20 -z-10"></div>
         </div>
 
-        <div className="flex-1 min-w-0">
-          {/* Enhanced Message Header */}
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center space-x-3">
-              <span className="text-base font-bold text-gray-900 dark:text-gray-100 tracking-tight">
-                {getModelInfo(message.model || '').name || 'AI Assistant'}
-              </span>
-              <div className="flex items-center space-x-2 text-xs">
-                <span className="px-2 py-1 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300 rounded-full font-medium">
-                  {getModelInfo(message.model || '').provider || 'AI'}
-                </span>
-                <span className="text-gray-500 dark:text-gray-400">
-                  {formatTime(message.timestamp)}
-                </span>
-              </div>
-            </div>
-            
-            {message.usage && (
-              <div className="hidden sm:flex items-center space-x-1 text-xs text-gray-400 dark:text-gray-500 bg-gray-100/50 dark:bg-gray-700/30 px-3 py-1 rounded-full">
-                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                </svg>
-                <span>{message.usage.total_tokens} tokens</span>
+        <div className="flex-1 min-w-0 space-y-3">
+          {/* Simple header */}
+          <div className="flex items-center space-x-2">
+            <span className="font-medium text-gray-900 dark:text-white">
+              ChatQora
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              {formatTime(message.timestamp)}
+            </span>
+          </div>
+
+          {/* Message content */}
+          <div className="message-content prose dark:prose-invert max-w-none">
+            {/* Show attachments if they exist */}
+            {message.attachments && message.attachments.length > 0 && (
+              <div className="mb-4">
+                <ImagePreview 
+                  attachments={message.attachments} 
+                  onRemove={() => {}} 
+                  showRemoveButton={false}
+                />
               </div>
             )}
+            <div className="text-gray-800 dark:text-gray-200 leading-relaxed" dangerouslySetInnerHTML={{ __html: parseContent(message.content) }} />
           </div>
 
-          {/* Enhanced Message Content */}
-          <div className="message-content">
-            <div dangerouslySetInnerHTML={{ __html: parseContent(message.content) }} />
-          </div>
-
-          {/* Enhanced Message Actions */}
-          <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-200/50 dark:border-gray-600/30">
-            <div className="flex items-center space-x-3">
-              <button
-                onClick={() => onCopy(message.content)}
-                className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group"
-                title="Copy message"
-              >
-                <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
-                </svg>
-                <span className="font-medium">Copy</span>
-              </button>
-              
-              <button className="flex items-center space-x-2 px-3 py-1.5 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-200 hover:bg-gray-100/80 dark:hover:bg-gray-700/50 rounded-lg transition-all duration-200 group">
-                <svg className="w-4 h-4 group-hover:scale-110 transition-transform duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.367 2.684 3 3 0 00-5.367-2.684z" />
-                </svg>
-                <span className="font-medium">Share</span>
-              </button>
-            </div>
-
-            {/* Reaction buttons */}
-            <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-              <button className="p-2 hover:bg-green-100/80 dark:hover:bg-green-900/30 rounded-lg transition-colors duration-200 group" title="Good response">
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-green-600 dark:group-hover:text-green-400 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
-                </svg>
-              </button>
-              <button className="p-2 hover:bg-red-100/80 dark:hover:bg-red-900/30 rounded-lg transition-colors duration-200 group" title="Poor response">
-                <svg className="w-4 h-4 text-gray-400 group-hover:text-red-600 dark:group-hover:text-red-400 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.06L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2M17 4H19a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
-                </svg>
-              </button>
-            </div>
+          {/* Simple actions */}
+          <div className="flex items-center space-x-2 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={() => onCopy(message.content)}
+              className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+              title="Copy message"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+            </button>
+            
+            <button className="p-2 text-gray-400 hover:text-green-600 dark:hover:text-green-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Good response">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 10h4.764a2 2 0 011.789 2.894l-3.5 7A2 2 0 0115.263 21h-4.017c-.163 0-.326-.02-.485-.06L7 20m7-10V5a2 2 0 00-2-2h-.095c-.5 0-.905.405-.905.905 0 .714-.211 1.412-.608 2.006L7 11v9m7-10h-2M7 20H5a2 2 0 01-2-2v-6a2 2 0 012-2h2.5" />
+              </svg>
+            </button>
+            
+            <button className="p-2 text-gray-400 hover:text-red-600 dark:hover:text-red-400 rounded-md hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" title="Poor response">
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 14H5.236a2 2 0 01-1.789-2.894l3.5-7A2 2 0 018.736 3h4.018c.163 0 .326.02.485.60L17 4m-7 10v2a2 2 0 002 2h.095c.5 0 .905-.405.905-.905 0-.714.211-1.412.608-2.006L17 13V4m-7 10h2M17 4H19a2 2 0 012 2v6a2 2 0 01-2 2h-2.5" />
+              </svg>
+            </button>
           </div>
         </div>
       </div>
