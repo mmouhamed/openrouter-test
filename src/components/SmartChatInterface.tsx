@@ -17,6 +17,8 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
   const { 
     activeConversation, 
     addMessage, 
+    editMessage,
+    deleteMessage,
     createConversation,
     getOptimizedContext
   } = useChat();
@@ -102,19 +104,25 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     // _setProcessingStartTime(Date.now()); // Commented out as not used
 
     try {
-      // Get optimized context for memory-enabled conversations
+      // Get conversation context (always for context awareness)
       let optimizedContext: ChatMessage[] = [];
-      if (user && activeConversation && activeConversation.memoryEnabled) {
-        try {
-          const contextResult = await Promise.race([
-            getOptimizedContext(currentInput),
-            new Promise((_, reject) => 
-              setTimeout(() => reject(new Error('Memory context timeout')), 5000)
-            )
-          ]);
-          optimizedContext = Array.isArray(contextResult) ? contextResult : [];
-        } catch (memoryError) {
-          console.warn('Memory system error, falling back to recent messages:', memoryError);
+      if (user && activeConversation) {
+        if (activeConversation.memoryEnabled) {
+          // Use advanced memory/context optimization for memory-enabled conversations
+          try {
+            const contextResult = await Promise.race([
+              getOptimizedContext(currentInput),
+              new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('Memory context timeout')), 5000)
+              )
+            ]);
+            optimizedContext = Array.isArray(contextResult) ? contextResult : [];
+          } catch (memoryError) {
+            console.warn('Memory system error, falling back to recent messages:', memoryError);
+            optimizedContext = activeConversation.messages.slice(-10);
+          }
+        } else {
+          // For non-memory conversations, still provide recent context for conversation awareness
           optimizedContext = activeConversation.messages.slice(-10);
         }
       }
@@ -124,8 +132,8 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
         userId: user?.id,
         conversationId: activeConversation?.id,
         conversationContext: optimizedContext,
-        systemPrompt: activeConversation?.memoryEnabled ? 
-          'You are an AI assistant with access to conversation memory and context. Use the provided context to give more relevant and personalized responses.' 
+        systemPrompt: activeConversation ? 
+          'You are an AI assistant with access to conversation context. Use the provided conversation history to give more relevant and contextually aware responses. Remember previous parts of our conversation.' 
           : undefined,
         // Force ensemble for complex requests
         forceEnsemble: currentInput.length > 200 || 
@@ -299,6 +307,18 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
             <div className="text-gray-500">
               Efficiency: {systemStatus?.system?.efficiency || '95%'} | 
               Synapses: {systemStatus?.system?.totalSynapses || 0}
+              {user && activeConversation && (
+                <span className={`ml-2 inline-flex items-center space-x-1 ${
+                  activeConversation.memoryEnabled ? 'text-green-600' : 'text-gray-500'
+                }`}>
+                  <span className={`w-1 h-1 rounded-full ${
+                    activeConversation.memoryEnabled ? 'bg-green-500' : 'bg-gray-400'
+                  }`}></span>
+                  <span className="text-xs">
+                    {activeConversation.memoryEnabled ? 'Enhanced Memory' : 'Basic Context'}
+                  </span>
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -393,6 +413,8 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
                   message={message}
                   getModelInfo={getModelInfo}
                   onCopy={copyMessage}
+                  onEdit={user ? editMessage : undefined}
+                  onDelete={user ? deleteMessage : undefined}
                 />
                 {/* Ensemble info removed as properties don't exist in ChatMessage interface */}
               </div>
@@ -633,6 +655,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
           </div>
         </div>
       </div>
+
     </div>
   );
 }

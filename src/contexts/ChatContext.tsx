@@ -46,6 +46,8 @@ interface ChatContextType {
   memoryManager: MemoryManager;
   createConversation: (title?: string, enableMemory?: boolean) => string;
   addMessage: (message: Omit<ChatMessage, 'id'>) => void;
+  editMessage: (messageId: string, newContent: string) => void;
+  deleteMessage: (messageId: string) => void;
   deleteConversation: (id: string) => void;
   switchConversation: (id: string) => void;
   clearActiveConversation: () => void;
@@ -252,6 +254,46 @@ export function ChatProvider({ children }: { children: ReactNode }) {
     );
   };
 
+  const editMessage = (messageId: string, newContent: string) => {
+    if (!user || !activeConversationId) return;
+
+    setConversations(prev =>
+      prev.map(conv => {
+        if (conv.id === activeConversationId) {
+          return {
+            ...conv,
+            messages: conv.messages.map(message =>
+              message.id === messageId
+                ? { ...message, content: newContent, timestamp: new Date() }
+                : message
+            ),
+            updatedAt: new Date(),
+            contextOptimized: false // Reset optimization status after edit
+          };
+        }
+        return conv;
+      })
+    );
+  };
+
+  const deleteMessage = (messageId: string) => {
+    if (!user || !activeConversationId) return;
+
+    setConversations(prev =>
+      prev.map(conv => {
+        if (conv.id === activeConversationId) {
+          return {
+            ...conv,
+            messages: conv.messages.filter(message => message.id !== messageId),
+            updatedAt: new Date(),
+            contextOptimized: false // Reset optimization status after deletion
+          };
+        }
+        return conv;
+      })
+    );
+  };
+
   const updateConversationTitle = (id: string, title: string) => {
     setConversations(prev =>
       prev.map(conv =>
@@ -351,6 +393,8 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       memoryManager,
       createConversation,
       addMessage,
+      editMessage,
+      deleteMessage,
       deleteConversation,
       switchConversation,
       clearActiveConversation,

@@ -1,6 +1,7 @@
 'use client';
 
 import SmartChatInterface from '@/components/SmartChatInterface';
+import ChatSettings from '@/components/ChatSettings';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat } from '@/contexts/ChatContext';
 import { useState } from 'react';
@@ -10,6 +11,7 @@ export default function ChatPage() {
   const { user } = useAuth();
   const { conversations, activeConversation, switchConversation, createConversation } = useChat();
   const [sidebarOpen, setSidebarOpen] = useState(false); // Default closed on mobile
+  const [showSettings, setShowSettings] = useState(false);
 
   return (
     <div className="h-screen flex bg-white dark:bg-gray-900">
@@ -96,9 +98,12 @@ export default function ChatPage() {
                 <div className="text-sm text-gray-900 dark:text-white">
                   {user.name || user.username || 'User'}
                 </div>
-                <Link href="/" className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                <button 
+                  onClick={() => setShowSettings(true)}
+                  className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
+                >
                   Settings
-                </Link>
+                </button>
               </div>
             </div>
           )}
@@ -136,6 +141,12 @@ export default function ChatPage() {
           <SmartChatInterface className="h-full" />
         </div>
       </div>
+
+      {/* Chat Settings Modal */}
+      <ChatSettings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)} 
+      />
     </div>
   );
 }

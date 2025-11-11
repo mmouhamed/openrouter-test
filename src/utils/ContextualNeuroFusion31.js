@@ -138,7 +138,10 @@ export class ContextualNeuroFusion31 extends NeuroFusion31 {
    * Advanced Conversational Context Analysis
    */
   async analyzeConversationalContext(input, attachments, userId, conversationId, options) {
-    const conversationHistory = this.getConversationHistory(userId, conversationId);
+    // Use provided conversation context if available, otherwise fallback to internal memory
+    const conversationHistory = options.conversationContext && options.conversationContext.length > 0 
+      ? options.conversationContext 
+      : this.getConversationHistory(userId, conversationId);
     const userProfile = this.getUserProfile(userId);
     
     // Content Classification
@@ -423,6 +426,10 @@ export class ContextualNeuroFusion31 extends NeuroFusion31 {
 
   extractTopicKeywords(text) {
     // Simple keyword extraction (in production, use more sophisticated NLP)
+    if (!text || typeof text !== 'string') {
+      return [];
+    }
+    
     const words = text.toLowerCase()
       .replace(/[^\w\s]/g, ' ')
       .split(/\s+/)
