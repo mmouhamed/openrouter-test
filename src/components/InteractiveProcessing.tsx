@@ -90,13 +90,13 @@ const AI_FACTS: AIFact[] = [
 interface InteractiveProcessingProps {
   ensembleStrategy?: string;
   hasAttachments?: boolean;
-  estimatedTime?: number;
+  _estimatedTime?: number;
 }
 
 export default function InteractiveProcessing({ 
   ensembleStrategy = 'parallel',
   hasAttachments = false,
-  estimatedTime = 10000 
+  _estimatedTime = 10000 
 }: InteractiveProcessingProps) {
   const [currentStage, setCurrentStage] = useState(0);
   const [progress, setProgress] = useState(0);
@@ -118,7 +118,7 @@ export default function InteractiveProcessing({
   // Progress through stages
   useEffect(() => {
     let stageTimer: NodeJS.Timeout;
-    let progressTimer: NodeJS.Timeout;
+    const progressTimer: { current?: NodeJS.Timeout } = { current: undefined };
     
     const advanceStage = () => {
       if (currentStage < PROCESSING_STAGES.length - 1) {
@@ -143,12 +143,11 @@ export default function InteractiveProcessing({
     }
 
     // Update progress
-    const progressTimerInterval = setInterval(updateProgress, 100);
-    progressTimer = progressTimerInterval;
+    progressTimer.current = setInterval(updateProgress, 100);
 
     return () => {
       clearTimeout(stageTimer);
-      clearInterval(progressTimer);
+      if (progressTimer.current) clearInterval(progressTimer.current);
     };
   }, [currentStage]);
 

@@ -13,9 +13,9 @@ export default function MemoryDashboard({ isOpen, onClose }: MemoryDashboardProp
     activeConversation, 
     getMemoryStats, 
     toggleMemoryForConversation,
-    conversations 
+    conversations: _conversations 
   } = useChat();
-  const [stats, setStats] = useState<any>(null);
+  const [stats, setStats] = useState<{ totalSegments: number; compressionRatio: number; segmentTypes: Record<string, number>; contextOptimized?: boolean } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {

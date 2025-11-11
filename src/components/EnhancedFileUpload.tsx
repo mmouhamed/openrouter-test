@@ -142,9 +142,9 @@ export default function EnhancedFileUpload({
               
               const attachment: Attachment = {
                 id,
-                name: file.name,
-                type: file.type,
-                size: file.size,
+                fileName: file.name,
+                mimeType: file.type,
+                fileSize: file.size,
                 url: result.url
               };
 
@@ -190,7 +190,7 @@ export default function EnhancedFileUpload({
     if (files.length > 0) {
       processFiles(files);
     }
-  }, [disabled]);
+  }, [disabled, processFiles]);
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -206,7 +206,7 @@ export default function EnhancedFileUpload({
   const removePreview = (id: string) => {
     setPreviews(prev => prev.filter(p => p.id !== id));
     setUploadProgress(prev => {
-      const { [id]: removed, ...rest } = prev;
+      const { [id]: _removed, ...rest } = prev;
       return rest;
     });
   };

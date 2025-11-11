@@ -49,14 +49,14 @@ export async function POST(request: NextRequest) {
     
     // Add conversation context if provided
     if (conversationContext && Array.isArray(conversationContext) && conversationContext.length > 0) {
-      conversationContext.forEach((msg: any) => {
+      conversationContext.forEach((msg: { role: string; content: string; attachments?: Array<{ base64?: string; url?: string }> }) => {
         if (msg.attachments && msg.attachments.length > 0) {
           // For context messages with attachments, format for vision models
           const content = [
             { type: 'text', text: msg.content || 'See image' },
-            ...msg.attachments.map((attachment: any) => ({
+            ...msg.attachments.map((attachment: { base64?: string; url?: string }) => ({
               type: 'image_url',
-              image_url: { url: attachment.base64 || attachment.url }
+              image_url: { url: attachment.base64 || attachment.url || '' }
             }))
           ];
           messages.push({
@@ -76,9 +76,9 @@ export async function POST(request: NextRequest) {
     if (attachments && attachments.length > 0) {
       const content = [
         { type: 'text', text: message || 'Please describe this image' },
-        ...attachments.map((attachment: any) => ({
+        ...attachments.map((attachment: { base64?: string; url?: string }) => ({
           type: 'image_url',
-          image_url: { url: attachment.base64 || attachment.url }
+          image_url: { url: attachment.base64 || attachment.url || '' }
         }))
       ];
       messages.push({

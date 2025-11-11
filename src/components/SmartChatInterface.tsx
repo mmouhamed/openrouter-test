@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChat, ChatMessage, Attachment } from '@/contexts/ChatContext';
 import { useEnsembleNeuroFusion31 } from '@/utils/EnsembleNeuroFusion31';
@@ -28,22 +28,24 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     processRequest,
     systemStatus,
     systemName,
-    version
+    version: _version
   } = useEnsembleNeuroFusion31(user?.id || 'anonymous', activeConversation?.id || 'default');
   
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [selectedAttachments, setSelectedAttachments] = useState<Attachment[]>([]);
-  const [lastEnsembleInfo, setLastEnsembleInfo] = useState<any>(null);
+  const [lastEnsembleInfo, setLastEnsembleInfo] = useState<{ model?: string; status?: string; confidence?: number; metadata?: Record<string, unknown> } | null>(null);
   const [abortController, setAbortController] = useState<AbortController | null>(null);
-  const [processingStartTime, setProcessingStartTime] = useState<number | null>(null);
+  const [_processingStartTime, _setProcessingStartTime] = useState<number | null>(null);
   const [showFileUpload, setShowFileUpload] = useState(false);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   
-  const messages = user && activeConversation ? activeConversation.messages : [];
+  const messages = useMemo(() => {
+    return user && activeConversation ? activeConversation.messages : [];
+  }, [user, activeConversation]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -97,11 +99,11 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     setSelectedAttachments([]);
     setIsLoading(true);
     setError('');
-    setProcessingStartTime(Date.now());
+    // _setProcessingStartTime(Date.now()); // Commented out as not used
 
     try {
       // Get optimized context for memory-enabled conversations
-      let optimizedContext: any[] = [];
+      let optimizedContext: ChatMessage[] = [];
       if (user && activeConversation && activeConversation.memoryEnabled) {
         try {
           const contextResult = await Promise.race([
@@ -147,7 +149,11 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
       );
 
       // Update ensemble info
-      setLastEnsembleInfo(result.ensembleNeuroFusion || result.neuroFusion);
+      setLastEnsembleInfo(
+        (result as Record<string, unknown>).ensembleNeuroFusion || 
+        (result as Record<string, unknown>).neuroFusion || 
+        null
+      );
 
       const assistantMessage: Omit<ChatMessage, 'id'> = {
         role: 'assistant',
@@ -176,7 +182,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     } finally {
       setIsLoading(false);
       setAbortController(null);
-      setProcessingStartTime(null);
+      // _setProcessingStartTime(null); // Commented out as not used
     }
   };
 
@@ -184,7 +190,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     if (abortController) {
       try {
         abortController.abort();
-      } catch (e) {
+      } catch (_e) {
         // Ignore abort errors
       }
     }
@@ -211,7 +217,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
 
   const getModelInfo = (modelId: string) => {
     // Map actual model IDs to neural core info
-    const modelInfo: { [key: string]: any } = {
+    const modelInfo: { [key: string]: { name: string; description: string } } = {
       'meta-llama/llama-3.3-8b-instruct:free': { 
         name: 'Phoenix Core', 
         icon: '🔥', 
@@ -242,7 +248,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     return modelInfo[modelId] || { name: modelId, icon: '🔥', description: 'Neural Core' };
   };
 
-  const getEnsembleStatusColor = (ensembleInfo: any) => {
+  const getEnsembleStatusColor = (ensembleInfo: { status?: string } | null) => {
     if (!ensembleInfo) return 'text-gray-600';
     
     if (ensembleInfo.ensembleStrategy) {
@@ -260,7 +266,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
     return 'text-gray-600';
   };
 
-  const getEnsembleStatusMessage = (ensembleInfo: any) => {
+  const getEnsembleStatusMessage = (ensembleInfo: { status?: string; model?: string; confidence?: number } | null) => {
     if (!ensembleInfo) return '';
     
     if (ensembleInfo.ensembleStrategy) {
@@ -391,7 +397,7 @@ export default function SmartChatInterface({ className = '' }: SmartChatInterfac
                 How can I help you today?
               </h2>
               <p className="text-sm sm:text-base text-gray-600 dark:text-gray-400 mb-6 sm:mb-8 leading-relaxed">
-                I'm ChatQora, powered by NeuroFusion technology that combines multiple AI models for enhanced responses.
+                I&apos;m ChatQora, powered by NeuroFusion technology that combines multiple AI models for enhanced responses.
               </p>
               <div className="grid gap-3 text-sm">
                 <button 

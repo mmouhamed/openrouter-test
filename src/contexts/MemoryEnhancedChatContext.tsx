@@ -39,7 +39,7 @@ interface MemoryEnhancedChatContextType {
   clearActiveConversation: () => void;
   updateConversationTitle: (id: string, title: string) => void;
   getOptimizedContext: (query?: string) => Promise<ChatMessage[]>;
-  getMemoryStats: (conversationId?: string) => any;
+  getMemoryStats: (conversationId?: string) => { totalSegments: number; compressionRatio: number; segmentTypes: Record<string, number>; contextOptimized?: boolean } | null;
   toggleMemoryForConversation: (id: string) => void;
 }
 
@@ -64,14 +64,14 @@ export function MemoryEnhancedChatProvider({ children }: { children: ReactNode }
     } else {
       clearUserData();
     }
-  }, [user]);
+  }, [user, clearUserData, loadUserData]);
 
   // Save conversations and memory whenever they change
   useEffect(() => {
     if (user && conversations.length > 0) {
       saveUserData();
     }
-  }, [conversations, user]);
+  }, [conversations, user, saveUserData]);
 
   const loadUserData = useCallback(() => {
     if (!user) return;
@@ -81,12 +81,12 @@ export function MemoryEnhancedChatProvider({ children }: { children: ReactNode }
       const savedConversations = localStorage.getItem(`conversations_${user.id}`);
       if (savedConversations) {
         const parsed = JSON.parse(savedConversations);
-        const conversationsWithDates = parsed.map((conv: any) => ({
+        const conversationsWithDates = parsed.map((conv: { id: string; title: string; messages: Array<unknown>; createdAt: string; updatedAt: string; memoryEnabled?: boolean; contextOptimized?: boolean }) => ({
           ...conv,
           createdAt: new Date(conv.createdAt),
           updatedAt: new Date(conv.updatedAt),
           memoryEnabled: conv.memoryEnabled ?? true, // Default to enabled
-          messages: conv.messages.map((msg: any) => ({
+          messages: conv.messages.map((msg: { id: string; role: string; content: string; model?: string; usage?: object; timestamp: string }) => ({
             ...msg,
             timestamp: new Date(msg.timestamp)
           }))
@@ -97,7 +97,7 @@ export function MemoryEnhancedChatProvider({ children }: { children: ReactNode }
         const savedMemory = localStorage.getItem(`memory_${user.id}`);
         if (savedMemory) {
           const memoryData = JSON.parse(savedMemory);
-          Object.values(memoryData).forEach((memory: any) => {
+          Object.values(memoryData).forEach((memory: { conversationId: string }) => {
             memoryManager.importMemory(memory);
           });
         }

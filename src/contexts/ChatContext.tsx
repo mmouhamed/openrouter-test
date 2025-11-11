@@ -51,7 +51,7 @@ interface ChatContextType {
   clearActiveConversation: () => void;
   updateConversationTitle: (id: string, title: string) => void;
   getOptimizedContext: (query?: string) => Promise<ChatMessage[]>;
-  getMemoryStats: (conversationId?: string) => any;
+  getMemoryStats: (conversationId?: string) => { totalSegments: number; compressionRatio: number; segmentTypes: Record<string, number>; contextOptimized?: boolean } | null;
   toggleMemoryForConversation: (id: string) => void;
 }
 
@@ -84,12 +84,12 @@ export function ChatProvider({ children }: { children: ReactNode }) {
       if (savedConversations) {
         try {
           const parsed = JSON.parse(savedConversations);
-          const conversationsWithDates = parsed.map((conv: any) => ({
+          const conversationsWithDates = parsed.map((conv: { id: string; title: string; messages: Array<unknown>; createdAt: string; updatedAt: string; memoryEnabled?: boolean; contextOptimized?: boolean }) => ({
             ...conv,
             createdAt: new Date(conv.createdAt),
             updatedAt: new Date(conv.updatedAt),
             memoryEnabled: conv.memoryEnabled ?? false, // Default to false for backward compatibility
-            messages: conv.messages.map((msg: any) => ({
+            messages: conv.messages.map((msg: { id: string; role: string; content: string; model?: string; usage?: object; timestamp: string }) => ({
               ...msg,
               timestamp: new Date(msg.timestamp)
             }))
@@ -100,7 +100,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
           const savedMemory = localStorage.getItem(`memory_${user.id}`);
           if (savedMemory) {
             const memoryData = JSON.parse(savedMemory);
-            Object.values(memoryData).forEach((memory: any) => {
+            Object.values(memoryData).forEach((memory: { conversationId: string }) => {
               memoryManager.importMemory(memory);
             });
           }
@@ -125,7 +125,7 @@ export function ChatProvider({ children }: { children: ReactNode }) {
         memoryManager.clearMemory(conv.id);
       });
     }
-  }, [user, memoryManager]);
+  }, [user, memoryManager, conversations]);
 
   // Save conversations and memory data to localStorage whenever they change
   const saveUserData = useCallback(() => {

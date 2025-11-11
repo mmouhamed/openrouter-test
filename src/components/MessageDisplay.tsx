@@ -5,11 +5,11 @@ import ImagePreview from './ImagePreview';
 
 interface MessageDisplayProps {
   message: ChatMessage;
-  getModelInfo: (modelId: string) => any;
+  getModelInfo: (modelId: string) => { name?: string; description?: string };
   onCopy: (content: string) => void;
 }
 
-export default function MessageDisplay({ message, getModelInfo, onCopy }: MessageDisplayProps) {
+export default function MessageDisplay({ message, getModelInfo: _getModelInfo, onCopy }: MessageDisplayProps) {
   const formatTime = (date: Date) => {
     return date.toLocaleTimeString('en-US', { 
       hour: '2-digit', 

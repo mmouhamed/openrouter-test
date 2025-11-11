@@ -16,7 +16,7 @@ interface SidebarItem {
   comingSoon?: boolean;
 }
 
-const getNavigationItems = (isUserAdmin: boolean): SidebarItem[] => {
+const getNavigationItems = (_isUserAdmin: boolean): SidebarItem[] => {
   const items: SidebarItem[] = [
     { 
       name: 'Home', 
@@ -37,7 +37,7 @@ export default function Sidebar() {
   const [isOpen, setIsOpen] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
   const pathname = usePathname();
-  const { user, logout, loading, isAdmin } = useAuth();
+  const { user, logout, loading: _loading, isAdmin } = useAuth();
 
   const toggleSidebar = () => setIsOpen(!isOpen);
 
