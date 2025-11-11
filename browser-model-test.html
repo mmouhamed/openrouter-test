@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Free Model Reliability Test</title>
+    <style>
+        body {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #1a1a1a;
+            color: #00ff00;
+            line-height: 1.6;
+        }
+        .container {
+            background-color: #000;
+            padding: 20px;
+            border-radius: 8px;
+            border: 1px solid #333;
+        }
+        .status {
+            padding: 10px;
+            margin: 5px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+        .success { background-color: #0d4f0d; border-left: 4px solid #00ff00; }
+        .error { background-color: #4f0d0d; border-left: 4px solid #ff0000; }
+        .warning { background-color: #4f4f0d; border-left: 4px solid #ffff00; color: #000; }
+        .info { background-color: #0d0d4f; border-left: 4px solid #00ffff; }
+        button {
+            background-color: #333;
+            color: #00ff00;
+            border: 1px solid #555;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: monospace;
+            margin: 10px 5px;
+        }
+        button:hover { background-color: #444; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .results { margin-top: 20px; }
+        pre { background-color: #111; padding: 15px; border-radius: 4px; overflow-x: auto; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 Free Model Reliability Test</h1>
+        <p>This tool tests all free Llama and Qwen models to identify which ones are reliable for production use.</p>
+        
+        <button onclick="runQuickTest()" id="quickTestBtn">🚀 Run Quick Test (5 models)</button>
+        <button onclick="runFullTest()" id="fullTestBtn">🔬 Run Full Test (All models)</button>
+        <button onclick="clearResults()" id="clearBtn">🗑️ Clear Results</button>
+        
+        <div id="status" class="results"></div>
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        const FREE_MODELS = {
+            // Quick test - most promising models
+            quick: [
+                'meta-llama/llama-3.2-3b-instruct:free',
+                'meta-llama/llama-3.2-1b-instruct:free', 
+                'qwen/qwen3-4b:free',
+                'qwen/qwen2.5-vl-32b-instruct:free',
+                'meta-llama/llama-3.3-8b-instruct:free'
+            ],
+            
+            // All free models
+            all: [
+                // Qwen Models
+                'qwen/qwen3-coder:free',
+                'deepseek/deepseek-r1-052b-qwen3-8b:free',
+                'qwen/qwen3-4b:free',
+                'qwen/qwen3-30b-a3b:free',
+                'qwen/qwen3-14b:free',
+                'qwen/qwen3-235b-a22b:free',
+                'qwen/qwen2.5-vl-32b-instruct:free',
+                'qwen/qwen-2.5-72b-instruct:free',
+                'qwen/qwen2.5-vl-72b-instruct:free',
+                
+                // Llama Models  
+                'meta-llama/llama-3.3-8b-instruct:free',
+                'meta-llama/llama-4-maverick:free',
+                'meta-llama/llama-4-sneak:free',
+                'meta-llama/llama-3.1-titan-large-instruct:free',
+                'meta-llama/llama-3.2-7b-instruct:free',
+                'meta-llama/llama-3.2-3b-instruct:free',
+                'nvidia/nemotron/nemotron-3-llama-3-70b-instruct:free',
+                'meta-llama/llama-3.2-1b-instruct:free',
+                'meta-llama/llama-3.2-11b-vision-instruct:free'
+            ]
+        };
+
+        const results = {
+            successful: [],
+            rateLimited: [],
+            notFound: [],
+            errors: [],
+            timeouts: []
+        };
+
+        function log(message, type = 'info') {
+            const status = document.getElementById('status');
+            const div = document.createElement('div');
+            div.className = `status ${type}`;
+            div.innerHTML = message;
+            status.appendChild(div);
+            status.scrollTop = status.scrollHeight;
+        }
+
+        function updateButtons(testing) {
+            document.getElementById('quickTestBtn').disabled = testing;
+            document.getElementById('fullTestBtn').disabled = testing;
+        }
+
+        async function testModel(modelId) {
+            const startTime = Date.now();
+            
+            try {
+                log(`Testing ${modelId}...`, 'info');
+                
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    signal: AbortSignal.timeout(20000), // 20 second timeout
+                    body: JSON.stringify({
+                        message: "Hello! Please respond with a brief test message.",
+                        model: modelId,
+                        conversationContext: []
+                    })
+                });
+
+                const endTime = Date.now();
+                const responseTime = endTime - startTime;
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    
+                    if (response.status === 404) {
+                        log(`❌ ${modelId}: Not Found (404)`, 'error');
+                        results.notFound.push({ model: modelId, error: 'Model not available' });
+                    } else if (response.status === 429) {
+                        log(`⏰ ${modelId}: Rate Limited (429) - Too many requests`, 'warning');
+                        results.rateLimited.push({ model: modelId, error: 'Rate limited' });
+                    } else {
+                        log(`❌ ${modelId}: HTTP ${response.status}`, 'error');
+                        results.errors.push({ model: modelId, status: response.status, error: errorText });
+                    }
+                    return;
+                }
+
+                const data = await response.json();
+                const responseLength = data.response?.length || 0;
+                
+                log(`✅ ${modelId}: Success (${responseTime}ms, ${responseLength} chars)`, 'success');
+                results.successful.push({ 
+                    model: modelId, 
+                    responseTime,
+                    responseLength,
+                    usage: data.usage
+                });
+
+            } catch (error) {
+                if (error.name === 'TimeoutError' || error.message.includes('timeout')) {
+                    log(`⏳ ${modelId}: Timeout (>20s)`, 'warning');
+                    results.timeouts.push({ model: modelId, error: 'Timeout' });
+                } else {
+                    log(`💥 ${modelId}: ${error.message}`, 'error');
+                    results.errors.push({ model: modelId, error: error.message });
+                }
+            }
+        }
+
+        async function runTest(modelList, testType) {
+            // Clear previous results
+            Object.keys(results).forEach(key => results[key] = []);
+            
+            updateButtons(true);
+            log(`🚀 Starting ${testType} test with ${modelList.length} models...`, 'info');
+            
+            // Test models with delay between requests
+            for (let i = 0; i < modelList.length; i++) {
+                const model = modelList[i];
+                await testModel(model);
+                
+                // Wait between tests to be respectful to the API
+                if (i < modelList.length - 1) {
+                    log(`⏸️ Waiting 3 seconds before next test...`, 'info');
+                    await new Promise(resolve => setTimeout(resolve, 3000));
+                }
+            }
+            
+            showSummary();
+            updateButtons(false);
+        }
+
+        function runQuickTest() {
+            runTest(FREE_MODELS.quick, 'quick');
+        }
+
+        function runFullTest() {
+            runTest(FREE_MODELS.all, 'full');
+        }
+
+        function showSummary() {
+            const resultsDiv = document.getElementById('results');
+            
+            let summary = '<h2>📊 Test Results Summary</h2>';
+            
+            // Successful models
+            if (results.successful.length > 0) {
+                summary += '<h3>✅ Successful Models (Production Ready)</h3><pre>';
+                const sorted = [...results.successful].sort((a, b) => a.responseTime - b.responseTime);
+                sorted.forEach(r => {
+                    const speed = r.responseTime < 5000 ? '🚀' : r.responseTime < 10000 ? '⚡' : '🐌';
+                    summary += `${speed} ${r.model} - ${r.responseTime}ms\\n`;
+                });
+                summary += '</pre>';
+            }
+            
+            // Rate limited models
+            if (results.rateLimited.length > 0) {
+                summary += '<h3>⏰ Rate Limited Models (High Usage - Unreliable)</h3><pre>';
+                results.rateLimited.forEach(r => {
+                    summary += `❌ ${r.model} - ${r.error}\\n`;
+                });
+                summary += '</pre>';
+            }
+            
+            // Not found models  
+            if (results.notFound.length > 0) {
+                summary += '<h3>❌ Not Available Models</h3><pre>';
+                results.notFound.forEach(r => {
+                    summary += `❌ ${r.model} - ${r.error}\\n`;
+                });
+                summary += '</pre>';
+            }
+            
+            // Timeout models
+            if (results.timeouts.length > 0) {
+                summary += '<h3>⏳ Timeout Models (Too Slow)</h3><pre>';
+                results.timeouts.forEach(r => {
+                    summary += `❌ ${r.model} - ${r.error}\\n`;
+                });
+                summary += '</pre>';
+            }
+            
+            // Production recommendations
+            const fast = results.successful.filter(r => r.responseTime < 5000);
+            const reliable = results.successful.filter(r => r.responseTime < 10000);
+            
+            summary += '<h3>🎯 Production Recommendations</h3>';
+            
+            if (fast.length > 0) {
+                summary += '<h4>🚀 Fast & Reliable (< 5s response):</h4><pre>';
+                fast.forEach(r => summary += `✅ ${r.model}\\n`);
+                summary += '</pre>';
+            }
+            
+            if (reliable.length > fast.length) {
+                summary += '<h4>⚡ Reliable (< 10s response):</h4><pre>';
+                reliable.filter(r => r.responseTime >= 5000).forEach(r => {
+                    summary += `⚡ ${r.model}\\n`;
+                });
+                summary += '</pre>';
+            }
+            
+            const unreliable = [...results.rateLimited, ...results.notFound, ...results.timeouts, ...results.errors];
+            if (unreliable.length > 0) {
+                summary += '<h4>⚠️ Avoid in Production:</h4><pre>';
+                unreliable.forEach(r => summary += `❌ ${r.model}\\n`);
+                summary += '</pre>';
+            }
+            
+            resultsDiv.innerHTML = summary;
+        }
+
+        function clearResults() {
+            document.getElementById('status').innerHTML = '';
+            document.getElementById('results').innerHTML = '';
+            Object.keys(results).forEach(key => results[key] = []);
+        }
+
+        // Auto-scroll status div
+        function autoScroll() {
+            const status = document.getElementById('status');
+            status.scrollTop = status.scrollHeight;
+        }
+        
+        setInterval(autoScroll, 500);
+    </script>
+</body>
+</html>
