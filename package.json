@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
+    "build:clean": "rm -rf .next/cache && next build",
     "start": "next start",
     "lint": "eslint",
     "test:playwright": "npx playwright test"
