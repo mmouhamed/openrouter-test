@@ -61,6 +61,9 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
   const [, setRoutingDecision] = useState<RoutingDecision | null>(null);
   const [selectedModel] = useState<string>('QoraFusion 3.1');
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
+  
+  // Copy notification state
+  const [copyNotification, setCopyNotification] = useState<string>('');
 
   // Refs
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -746,6 +749,19 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
     return names[strategy as keyof typeof names] || 'Processing';
   };
 
+  // Copy message functionality
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopyNotification('Copied!');
+      setTimeout(() => setCopyNotification(''), 2000);
+    } catch (err) {
+      console.error('Failed to copy text: ', err);
+      setCopyNotification('Failed to copy');
+      setTimeout(() => setCopyNotification(''), 2000);
+    }
+  };
+
   // Claude-style Sidebar Content Component
   const SidebarContent = () => {
     const sortedChats = Object.values(chatHistory).sort((a, b) => 
@@ -1219,26 +1235,44 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                         )}
                       </div>
 
-                      {/* Message Bubble */}
-                      <div className={cn(
-                        "rounded-xl px-3 py-2.5 shadow-sm", 
-                        message.role === 'user' 
-                          ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white ml-3 sm:ml-6 shadow-md' 
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 mr-3 sm:mr-6'
-                      )}>
-                        {message.role === 'user' ? (
-                          <div className="prose prose-sm max-w-none prose-invert">
-                            {message.content}
-                          </div>
-                        ) : (
-                          <RichMessageRenderer
-                            content={message.content}
-                            role={message.role}
-                            messageId={message.id}
-                            enableImageSearch={true}
-                            enableInteractiveElements={true}
-                          />
-                        )}
+                      {/* Message Bubble with Copy Button */}
+                      <div className="relative">
+                        <div className={cn(
+                          "rounded-xl px-3 py-2.5 shadow-sm", 
+                          message.role === 'user' 
+                            ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white ml-3 sm:ml-6 shadow-md' 
+                            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 mr-3 sm:mr-6'
+                        )}>
+                          {/* Copy Button */}
+                          <button
+                            onClick={() => copyToClipboard(message.content)}
+                            className={cn(
+                              "absolute top-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1.5 rounded-lg touch-manipulation",
+                              message.role === 'user' 
+                                ? 'left-2 bg-black/20 hover:bg-black/30 text-white' 
+                                : 'right-2 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-600 dark:text-gray-300'
+                            )}
+                            title="Copy message"
+                            aria-label="Copy message to clipboard"
+                          >
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                          </button>
+                          {message.role === 'user' ? (
+                            <div className="prose prose-sm max-w-none prose-invert">
+                              {message.content}
+                            </div>
+                          ) : (
+                            <RichMessageRenderer
+                              content={message.content}
+                              role={message.role}
+                              messageId={message.id}
+                              enableImageSearch={true}
+                              enableInteractiveElements={true}
+                            />
+                          )}
+                        </div>
                       </div>
 
                       {/* Message Metadata */}
@@ -1582,6 +1616,15 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
       </footer>
         </div>
       </div>
+
+      {/* Copy Notification Toast */}
+      {copyNotification && (
+        <div className="fixed top-4 left-1/2 transform -translate-x-1/2 z-50">
+          <div className="bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 px-4 py-2 rounded-lg shadow-lg text-sm font-medium animate-in slide-in-from-top-2 duration-200">
+            {copyNotification}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
