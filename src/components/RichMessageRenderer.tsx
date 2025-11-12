@@ -18,7 +18,14 @@ import {
   AlertCircle,
   CheckCircle,
   Info,
-  Star
+  Star,
+  Code2,
+  FileText,
+  Cpu,
+  Zap,
+  ArrowUpDown,
+  Search,
+  Filter
 } from 'lucide-react';
 import Image from 'next/image';
 import { imageEnhancementService } from '@/services/imageEnhancementService';
@@ -39,6 +46,30 @@ interface EnhancedImage {
   relevanceScore?: number;
 }
 
+interface AlgorithmInfo {
+  name: string;
+  complexity: string;
+  description: string;
+  codeExample?: string;
+  type: 'method' | 'function' | 'algorithm' | 'concept';
+}
+
+interface StructuredContent {
+  title: string;
+  sections: ContentSection[];
+  type: 'algorithm' | 'comparison' | 'tutorial' | 'reference';
+}
+
+interface ContentSection {
+  id: string;
+  title: string;
+  content: string;
+  type: 'overview' | 'implementation' | 'example' | 'performance' | 'usage';
+  collapsible: boolean;
+  codeBlocks?: string[];
+  algorithms?: AlgorithmInfo[];
+}
+
 export default function RichMessageRenderer({ 
   content, 
   role, 
@@ -51,6 +82,9 @@ export default function RichMessageRenderer({
   const [enhancedImages, setEnhancedImages] = useState<EnhancedImage[]>([]);
   const [activeTab, setActiveTab] = useState<string>('');
   const [isLoadingImages, setIsLoadingImages] = useState(false);
+  const [structuredContent, setStructuredContent] = useState<StructuredContent | null>(null);
+  const [tableSearchTerm, setTableSearchTerm] = useState<string>('');
+  const [sortConfig, setSortConfig] = useState<{key: string; direction: 'asc' | 'desc'} | null>(null);
 
   const enhanceWithImages = useCallback(async (text: string) => {
     if (isLoadingImages) return;
@@ -72,10 +106,18 @@ export default function RichMessageRenderer({
     }
   }, [isLoadingImages]);
 
-  // Auto-enhance content with images for assistant messages
+  // Auto-enhance content with images and structure detection for assistant messages
   useEffect(() => {
-    if (role === 'assistant' && enableImageSearch) {
-      enhanceWithImages(content);
+    if (role === 'assistant') {
+      if (enableImageSearch) {
+        enhanceWithImages(content);
+      }
+      
+      // Detect and structure content efficiently
+      const structured = structureContent(content);
+      if (structured) {
+        setStructuredContent(structured);
+      }
     }
   }, [content, role, enableImageSearch, enhanceWithImages]);
 
@@ -213,6 +255,239 @@ export default function RichMessageRenderer({
             </div>
           </div>
         </div>
+      </div>
+    );
+  };
+
+  const renderEnhancedTable = (children: React.ReactNode, tableId: string) => {
+    return (
+      <div className="enhanced-table-container my-6">
+        <div className="mb-4 flex flex-col sm:flex-row gap-2 sm:gap-4">
+          <div className="flex items-center space-x-2 flex-1">
+            <Search size={16} className="text-gray-500" />
+            <input
+              type="text"
+              placeholder="Search table data..."
+              value={tableSearchTerm}
+              onChange={(e) => setTableSearchTerm(e.target.value)}
+              className="flex-1 px-3 py-1.5 text-sm border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex items-center space-x-2">
+            <Filter size={16} className="text-gray-500" />
+            <span className="text-xs text-gray-500 dark:text-gray-400">Interactive table</span>
+          </div>
+        </div>
+        <div className="table-container overflow-x-auto bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 shadow-sm">
+          <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700" id={tableId}>
+            {children}
+          </table>
+        </div>
+        <div className="mt-2 text-xs text-gray-500 dark:text-gray-400 flex items-center space-x-4">
+          <span className="flex items-center space-x-1">
+            <ArrowUpDown size={12} />
+            <span>Click headers to sort</span>
+          </span>
+          <span>Scroll horizontally for more columns</span>
+        </div>
+      </div>
+    );
+  };
+
+  const detectAlgorithmContent = (text: string): AlgorithmInfo[] => {
+    const algorithms: AlgorithmInfo[] = [];
+    const lines = text.split('\n');
+    
+    // Pattern to detect algorithm descriptions
+    const algorithmPatterns = [
+      /^\s*([A-Z][a-zA-Z\s]+):\s*(.+)/,
+      /^\s*([a-z_]+\(\)):\s*(.+)/,
+      /^\s*([A-Z][a-zA-Z]+\s+[A-Z][a-zA-Z]+)\s*-\s*(.+)/
+    ];
+    
+    for (const line of lines) {
+      for (const pattern of algorithmPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          const [, name, description] = match;
+          
+          // Extract complexity if present
+          const complexityMatch = description.match(/O\([^)]+\)/g);
+          const complexity = complexityMatch ? complexityMatch[0] : 'Not specified';
+          
+          // Determine type
+          let type: AlgorithmInfo['type'] = 'concept';
+          if (name.includes('()')) type = 'method';
+          else if (name.match(/^[a-z_]+$/)) type = 'function';
+          else if (description.toLowerCase().includes('algorithm')) type = 'algorithm';
+          
+          algorithms.push({
+            name: name.replace(/[():]/g, '').trim(),
+            complexity,
+            description: description.replace(/O\([^)]+\)/g, '').trim(),
+            type
+          });
+        }
+      }
+    }
+    
+    return algorithms;
+  };
+
+  const structureContent = (text: string): StructuredContent | null => {
+    // Detect if this is algorithm/technical content
+    const isAlgorithmContent = /\b(algorithm|sort|search|complexity|implementation|method|function)\b/i.test(text);
+    if (!isAlgorithmContent) return null;
+    
+    const sections: ContentSection[] = [];
+    const lines = text.split('\n');
+    let currentSection: ContentSection | null = null;
+    
+    // Common section headers
+    const sectionPatterns = [
+      { pattern: /^#{1,3}\s*(.+)/, type: 'overview' as const },
+      { pattern: /^(Python's Built-in|Built-in|Implementation|Example|Usage|Performance)/i, type: 'implementation' as const },
+      { pattern: /^(Example|Examples|Use Case)/i, type: 'example' as const },
+      { pattern: /^(Performance|Complexity|Efficiency)/i, type: 'performance' as const }
+    ];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      let matchedSection = false;
+      
+      for (const { pattern, type } of sectionPatterns) {
+        const match = line.match(pattern);
+        if (match) {
+          // Save previous section
+          if (currentSection && currentSection.content.trim()) {
+            sections.push(currentSection);
+          }
+          
+          // Start new section
+          currentSection = {
+            id: `section-${sections.length}`,
+            title: match[1] || line.trim(),
+            content: '',
+            type,
+            collapsible: type !== 'overview',
+            codeBlocks: [],
+            algorithms: []
+          };
+          matchedSection = true;
+          break;
+        }
+      }
+      
+      if (!matchedSection && currentSection) {
+        currentSection.content += line + '\n';
+        
+        // Detect code blocks
+        if (line.trim().startsWith('```') || line.includes('def ') || line.includes('return')) {
+          currentSection.codeBlocks?.push(line);
+        }
+      } else if (!matchedSection && !currentSection) {
+        // Create overview section for unstructured content
+        currentSection = {
+          id: 'overview',
+          title: 'Overview',
+          content: line + '\n',
+          type: 'overview',
+          collapsible: false,
+          codeBlocks: [],
+          algorithms: []
+        };
+      }
+    }
+    
+    // Add final section
+    if (currentSection && currentSection.content.trim()) {
+      currentSection.algorithms = detectAlgorithmContent(currentSection.content);
+      sections.push(currentSection);
+    }
+    
+    if (sections.length === 0) return null;
+    
+    return {
+      title: sections[0]?.title || 'Technical Content',
+      sections,
+      type: 'algorithm'
+    };
+  };
+
+  const renderStructuredContent = () => {
+    if (!structuredContent) return null;
+    
+    return (
+      <div className="structured-content my-6">
+        <div className="bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg p-4 mb-6 border border-purple-200 dark:border-purple-700">
+          <div className="flex items-center space-x-2 mb-2">
+            <Cpu size={20} className="text-purple-600 dark:text-purple-400" />
+            <h3 className="text-lg font-semibold text-purple-800 dark:text-purple-200">
+              {structuredContent.title}
+            </h3>
+            <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 px-2 py-1 rounded">
+              {structuredContent.type.toUpperCase()}
+            </span>
+          </div>
+        </div>
+        
+        {structuredContent.sections.map((section) => (
+          <div key={section.id} className="mb-4">
+            {section.collapsible ? (
+              renderCollapsibleSection(section.title, 
+                <div>
+                  {section.algorithms && section.algorithms.length > 0 && (
+                    <div className="grid gap-3 mb-4">
+                      {section.algorithms.map((algo, idx) => (
+                        <div key={idx} className="bg-gray-50 dark:bg-gray-800 rounded-lg p-3 border border-gray-200 dark:border-gray-600">
+                          <div className="flex items-start justify-between mb-2">
+                            <div className="flex items-center space-x-2">
+                              <Code2 size={16} className="text-blue-600 dark:text-blue-400" />
+                              <h4 className="font-medium text-gray-900 dark:text-white">{algo.name}</h4>
+                              <span className={`text-xs px-2 py-0.5 rounded ${
+                                algo.type === 'method' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300' :
+                                algo.type === 'function' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' :
+                                'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300'
+                              }`}>
+                                {algo.type}
+                              </span>
+                            </div>
+                            <span className="text-xs bg-orange-100 dark:bg-orange-900/30 text-orange-700 dark:text-orange-300 px-2 py-0.5 rounded font-mono">
+                              {algo.complexity}
+                            </span>
+                          </div>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">{algo.description}</p>
+                          {algo.codeExample && (
+                            <div className="mt-2">
+                              <code className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
+                                {algo.codeExample}
+                              </code>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="prose prose-gray dark:prose-invert max-w-none">
+                    <ReactMarkdown components={customComponents}>
+                      {section.content}
+                    </ReactMarkdown>
+                  </div>
+                </div>,
+                section.id
+              )
+            ) : (
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">{section.title}</h3>
+                <div className="prose prose-gray dark:prose-invert max-w-none">
+                  <ReactMarkdown components={customComponents}>
+                    {section.content}
+                  </ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     );
   };
@@ -365,13 +640,10 @@ export default function RichMessageRenderer({
       </ol>
     ),
 
-    table: ({ children }: { children: React.ReactNode }) => (
-      <div className="table-container my-6 overflow-x-auto">
-        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
-          {children}
-        </table>
-      </div>
-    ),
+    table: ({ children }: { children: React.ReactNode }) => {
+      const tableId = `table-${messageId}-${Math.random().toString(36).substr(2, 9)}`;
+      return renderEnhancedTable(children, tableId);
+    },
 
     thead: ({ children }: { children: React.ReactNode }) => (
       <thead className="bg-gray-50 dark:bg-gray-800">
@@ -379,11 +651,33 @@ export default function RichMessageRenderer({
       </thead>
     ),
 
-    th: ({ children }: { children: React.ReactNode }) => (
-      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700">
-        {children}
-      </th>
-    ),
+    th: ({ children }: { children: React.ReactNode }) => {
+      const handleSort = (key: string) => {
+        setSortConfig(prev => {
+          if (prev?.key === key) {
+            return { key, direction: prev.direction === 'asc' ? 'desc' : 'asc' };
+          }
+          return { key, direction: 'asc' };
+        });
+      };
+      
+      const columnKey = String(children).toLowerCase().replace(/\s+/g, '_');
+      const isActive = sortConfig?.key === columnKey;
+      
+      return (
+        <th 
+          className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+          onClick={() => handleSort(columnKey)}
+        >
+          <div className="flex items-center space-x-1">
+            <span>{children}</span>
+            <ArrowUpDown size={12} className={`transition-opacity ${
+              isActive ? 'opacity-100' : 'opacity-0 group-hover:opacity-50'
+            }`} />
+          </div>
+        </th>
+      );
+    },
 
     td: ({ children }: { children: React.ReactNode }) => (
       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
@@ -552,8 +846,9 @@ export default function RichMessageRenderer({
   return (
     <div className="rich-message-content">
       {role === 'assistant' && renderEnhancedImages()}
+      {role === 'assistant' && structuredContent && renderStructuredContent()}
       
-      {contentParts.map((part, index) => {
+      {!structuredContent && contentParts.map((part, index) => {
         if (part.match(/^__CALLOUT_(\w+)__([\s\S]*?)__END_CALLOUT__$/)) {
           const match = part.match(/^__CALLOUT_(\w+)__([\s\S]*?)__END_CALLOUT__$/);
           if (match) {
@@ -570,9 +865,7 @@ export default function RichMessageRenderer({
         return (
           <div key={index}>
             <div className="prose prose-gray dark:prose-invert max-w-none prose-lg leading-relaxed">
-              <ReactMarkdown
-                components={customComponents}
-              >
+              <ReactMarkdown components={customComponents}>
                 {part}
               </ReactMarkdown>
             </div>

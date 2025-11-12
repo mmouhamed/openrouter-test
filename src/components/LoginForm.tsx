@@ -85,7 +85,7 @@ export default function LoginForm({ onClose }: LoginFormProps) {
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-semibold py-3 px-4 rounded-lg transition-colors disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 disabled:from-teal-400 disabled:to-cyan-400 text-white font-semibold py-3 px-4 rounded-lg transition-all duration-200 disabled:cursor-not-allowed shadow-md"
           >
             {isLoading ? 'Signing In...' : 'Sign In'}
           </button>

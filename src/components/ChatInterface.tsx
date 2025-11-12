@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message, SystemHealth, QueryAnalysis, RoutingDecision } from '@/types/chat';
 import { smartChatAgent, SmartRecommendation } from '@/lib/SmartChatAgent';
+import { conversationManager } from '@/lib/ConversationContext';
 import RichMessageRenderer from './RichMessageRenderer';
 import FusionProgress from './FusionProgress';
 // import FusionComparison from './FusionComparison';
@@ -20,7 +21,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
 
   // Enhanced features
   const [systemHealth, setSystemHealth] = useState<SystemHealth | null>(null);
-  const [webSearchEnabled, setWebSearchEnabled] = useState(true);
+  const [webSearchEnabled, setWebSearchEnabled] = useState(false);
   const [currentStrategy, setCurrentStrategy] = useState<string>('auto');
   const [processingStage, setProcessingStage] = useState<string>('');
   const [confidence, setConfidence] = useState<number>(0);
@@ -69,6 +70,12 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     // Load system health on mount
     fetchSystemHealth();
     
+    // Load saved conversation from localStorage
+    loadSavedConversation();
+    
+    // Initialize conversation context
+    conversationManager.initializeConversation(sessionId, []);
+    
     // Load usage hints
     loadUsageHints();
     
@@ -76,7 +83,25 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, [loadUsageHints]);
+    
+    // Cleanup old conversations periodically
+    const cleanupInterval = setInterval(() => {
+      conversationManager.cleanup();
+    }, 5 * 60 * 1000); // Every 5 minutes
+    
+    return () => clearInterval(cleanupInterval);
+  }, []); // Run only on mount
+
+  // Save conversation to localStorage when messages change
+  useEffect(() => {
+    if (messages.length > 0) {
+      saveConversationToStorage();
+      // Update conversation context
+      messages.forEach(msg => {
+        conversationManager.addMessage(sessionId, msg);
+      });
+    }
+  }, [messages]);
 
   useEffect(() => {
     // Auto-scroll to bottom
@@ -103,13 +128,47 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
 
   const fetchSystemHealth = async () => {
     try {
-      const response = await fetch(`/api/chat?action=health`);
-      const data = await response.json();
-      setSystemHealth(data.health);
+      const { healthCheckService } = await import('@/lib/healthCheck');
+      const health = await healthCheckService.getHealth();
+      setSystemHealth(health);
     } catch (error) {
       console.error('Failed to fetch system health:', error);
     }
   };
+
+  // localStorage functions for conversation persistence
+  const loadSavedConversation = useCallback(() => {
+    try {
+      const savedConversation = localStorage.getItem(`chat-${sessionId}`);
+      if (savedConversation) {
+        const parsed = JSON.parse(savedConversation);
+        if (parsed.messages && Array.isArray(parsed.messages)) {
+          // Convert timestamp strings back to Date objects
+          const messagesWithDates = parsed.messages.map((msg: Message & { timestamp: string }) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }));
+          setMessages(messagesWithDates);
+          console.log(`Loaded ${messagesWithDates.length} messages from storage`);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load saved conversation:', error);
+    }
+  }, [sessionId]);
+
+  const saveConversationToStorage = useCallback(() => {
+    try {
+      const conversationData = {
+        messages: messages.slice(-50), // Keep last 50 messages
+        lastUpdate: Date.now(),
+        sessionId
+      };
+      localStorage.setItem(`chat-${sessionId}`, JSON.stringify(conversationData));
+    } catch (error) {
+      console.warn('Failed to save conversation:', error);
+    }
+  }, [messages, sessionId]);
 
   // Enhanced dynamic loading stages with realistic AI system variations
   const getDynamicLoadingStages = (queryLength: number, hasComplexWords: boolean) => {
@@ -325,8 +384,67 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       }
     };
 
+    // Add user message to conversation
     setMessages(prev => [...prev, userMessage]);
     setInput('');
+
+    // Check if we should use contextual response or call model
+    const shouldCallResult = conversationManager.shouldCallModel(userMessage.content, sessionId);
+    console.log('🤖 Smart routing decision:', shouldCallResult);
+
+    // Try contextual response first for simple interactions
+    if (!shouldCallResult.shouldCall) {
+      const contextResponse = conversationManager.generateContextualResponse(userMessage.content, sessionId);
+      
+      if (contextResponse) {
+        // Create assistant message with contextual response
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: contextResponse,
+          timestamp: new Date(),
+          metadata: {
+            fromCache: true,
+            processingTime: 150,
+            model: 'Contextual AI',
+            confidence: shouldCallResult.confidence
+          }
+        };
+        
+        setTimeout(() => {
+          setMessages(prev => [...prev, assistantMessage]);
+          console.log('✅ Used contextual response:', shouldCallResult.reason);
+        }, 150); // Small delay for natural feel
+        
+        return;
+      }
+    }
+
+    // Check for cached response
+    const cachedResponse = conversationManager.getCachedResponse(userMessage.content);
+    if (cachedResponse && shouldCallResult.reason === 'Cached response available') {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: 'assistant',
+        content: cachedResponse,
+        timestamp: new Date(),
+        metadata: {
+          fromCache: true,
+          processingTime: 200,
+          model: 'Cached AI',
+          confidence: shouldCallResult.confidence
+        }
+      };
+      
+      setTimeout(() => {
+        setMessages(prev => [...prev, assistantMessage]);
+        console.log('✅ Used cached response for query');
+      }, 200);
+      
+      return;
+    }
+
+    // Proceed with full model call
     setIsLoading(true);
     setError('');
     setProcessingStage('Analyzing query with Smart Agent...');
@@ -353,10 +471,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       setProcessingStage(`Smart routing: ${smartAnalysis.routing.reasoning}`);
       setActiveModel(smartAnalysis.modelRecommendation.split('/').pop()?.split(':')[0] || 'Unknown');
       
-      // Determine which model to use
-      const modelToUse = selectedModel === 'auto' 
-        ? smartAnalysis.modelRecommendation 
-        : selectedModel;
+      // Use AI Fusion model (selectedModel is always 'AI Fusion')
 
       setCurrentStrategy(smartAnalysis.routing.strategy);
       setConfidence(smartAnalysis.routing.confidence);
@@ -416,6 +531,17 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         };
         setMessages(prev => [...prev, assistantMessage]);
         
+        // Cache response if appropriate
+        if (conversationManager.shouldCacheResponse(userMessage.content, data.response)) {
+          conversationManager.cacheResponse(
+            userMessage.content, 
+            data.response, 
+            JSON.stringify({ model: data.model, webSearchUsed: data.webSearchUsed }), 
+            data.fusion ? data.fusion.confidence : 0.8
+          );
+          console.log('💾 Cached response for future use');
+        }
+        
         // Use dynamic LLM-generated recommendations from API
         const dynamicRecommendations = data.dynamicRecommendations || [];
         console.log('🔄 Updating recommendations after response:', {
@@ -473,6 +599,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       setMessages([]);
       setError('');
       setSuggestions([]);
+      setSmartRecommendations([]);
+      
+      // Clear localStorage
+      localStorage.removeItem(`chat-${sessionId}`);
+      
+      // Initialize new conversation context
+      conversationManager.initializeConversation(sessionId, []);
+      
+      console.log('🧹 Chat cleared and context reset');
     } catch (error) {
       console.error('Failed to clear chat:', error);
     }

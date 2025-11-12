@@ -32,6 +32,7 @@ export interface MessageMetadata {
   analysis?: QueryAnalysis; // QueryAnalysis from SmartChatAgent
   routing?: RoutingDecision; // RoutingDecision from SmartChatAgent
   isCorrection?: boolean; // Flag for user correction messages
+  fromCache?: boolean; // Flag for cached/contextual responses
 }
 
 export interface QueryAnalysis {

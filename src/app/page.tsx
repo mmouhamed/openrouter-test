@@ -13,8 +13,12 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-blue-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">C</span>
+              <div className="w-8 h-8 flex items-center justify-center">
+                <img 
+                  src="/ChatQora.png" 
+                  alt="ChatQora Logo" 
+                  className="w-8 h-8 object-contain"
+                />
               </div>
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
                 ChatQora
@@ -24,7 +28,7 @@ export default function LandingPage() {
               <div className="flex items-center space-x-4">
                 <Link 
                   href="/chat" 
-                  className="text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300 font-medium"
+                  className="text-teal-600 dark:text-teal-400 hover:text-teal-700 dark:hover:text-teal-300 font-medium"
                 >
                   Chat
                 </Link>
@@ -51,8 +55,12 @@ export default function LandingPage() {
         <div className="max-w-xl lg:max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 lg:py-12">
           <div className="text-center">
             {/* Hero Logo */}
-            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl flex items-center justify-center mx-auto mb-4 lg:mb-6">
-              <span className="text-white font-bold text-base sm:text-lg lg:text-xl">C</span>
+            <div className="w-10 h-10 sm:w-12 sm:h-12 lg:w-14 lg:h-14 flex items-center justify-center mx-auto mb-4 lg:mb-6">
+              <img 
+                src="/ChatQora.png" 
+                alt="ChatQora Logo" 
+                className="w-full h-full object-contain"
+              />
             </div>
 
             {/* Main Heading */}
@@ -71,7 +79,7 @@ export default function LandingPage() {
             {/* CTA Buttons */}
             <div className="flex justify-center">
               <Link href="/chat">
-                <button className="inline-flex items-center justify-center px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 text-sm sm:text-base lg:text-lg font-medium text-white bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 touch-manipulation">
+                <button className="inline-flex items-center justify-center px-5 sm:px-6 lg:px-8 py-2.5 sm:py-3 text-sm sm:text-base lg:text-lg font-medium text-white bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 rounded-lg shadow-lg hover:shadow-xl transition-all duration-200 touch-manipulation">
                   Start Chatting
                   <svg className="ml-2 w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
@@ -83,7 +91,7 @@ export default function LandingPage() {
             {/* Feature Cards */}
             <div className="mt-8 lg:mt-12 grid grid-cols-1 md:grid-cols-3 gap-3 lg:gap-4">
               <div className="p-3 lg:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
                   <span className="text-lg lg:text-xl">🧠</span>
                 </div>
                 <h3 className="text-sm lg:text-base font-semibold text-gray-900 dark:text-white mb-1 lg:mb-2">
@@ -95,7 +103,7 @@ export default function LandingPage() {
               </div>
 
               <div className="p-3 lg:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
                   <span className="text-lg lg:text-xl">💬</span>
                 </div>
                 <h3 className="text-sm lg:text-base font-semibold text-gray-900 dark:text-white mb-1 lg:mb-2">
@@ -107,7 +115,7 @@ export default function LandingPage() {
               </div>
 
               <div className="p-3 lg:p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/50 dark:to-cyan-900/50 rounded-lg flex items-center justify-center mx-auto mb-2 lg:mb-3">
                   <span className="text-lg lg:text-xl">⚡</span>
                 </div>
                 <h3 className="text-sm lg:text-base font-semibold text-gray-900 dark:text-white mb-1 lg:mb-2">

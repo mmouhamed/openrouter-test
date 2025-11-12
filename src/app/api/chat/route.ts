@@ -155,6 +155,30 @@ Focus on being contextual and specific - not generic. Timestamp: ${Date.now()}`;
   }
 }
 
+// Helper function to extract conversation topics
+function extractConversationTopics(conversationContext: Array<{ role: string; content: string }>): string {
+  const importantWords = new Set<string>();
+
+  conversationContext.forEach(msg => {
+    if (msg.role === 'user') {
+      // Extract key nouns and topics from user messages
+      const words = msg.content.toLowerCase().match(/\b\w+\b/g) || [];
+      words
+        .filter(word => 
+          word.length > 4 && 
+          !['that', 'this', 'what', 'when', 'where', 'which', 'would', 'could', 'should', 'about'].includes(word)
+        )
+        .forEach(word => {
+          if (importantWords.size < 10) {
+            importantWords.add(word);
+          }
+        });
+    }
+  });
+
+  return Array.from(importantWords).slice(0, 5).join(', ');
+}
+
 // Add edge runtime configuration for Cloudflare compatibility
 export const runtime = 'edge';
 
@@ -395,9 +419,31 @@ LINK POLICY:
       enhancedSystemPrompt += '\n\nIMPORTANT: The user has recently made corrections. Be extra careful about temporal accuracy and avoid generating URLs. Acknowledge any corrections gracefully and provide accurate information.';
     }
 
-    // Add conversation context if provided
+    // Enhanced conversation context processing
     if (conversationContext && Array.isArray(conversationContext) && conversationContext.length > 0) {
-      conversationContext.forEach((msg: { role: string; content: string; attachments?: Array<{ base64?: string; url?: string }>; isCorrection?: boolean }) => {
+      // Smart context window management - keep recent messages + important context
+      const processedContext = conversationContext
+        .slice(-10) // Last 10 messages for better context
+        .filter((msg: { role: string; content: string }) => {
+          // Filter out very short or repetitive messages to save tokens
+          const content = msg.content?.trim() || '';
+          return content.length > 2 && !['ok', 'yes', 'no', 'thanks'].includes(content.toLowerCase());
+        })
+        .map((msg: { role: string; content: string }, index: number) => ({
+          ...msg,
+          timestamp: new Date(),
+          isRecent: index >= conversationContext.length - 5 // Last 5 are "recent"
+        }));
+
+      // Add conversation context with priority for recent messages
+      processedContext.forEach((msg: { 
+        role: string; 
+        content: string; 
+        attachments?: Array<{ base64?: string; url?: string }>; 
+        isCorrection?: boolean;
+        isRecent?: boolean;
+        timestamp?: Date;
+      }) => {
         if (msg.attachments && msg.attachments.length > 0) {
           // For context messages with attachments, format for vision models
           const content = [
@@ -412,12 +458,25 @@ LINK POLICY:
             content: content
           });
         } else {
+          // Truncate very long messages to preserve context window
+          const truncatedContent = msg.content.length > 1000 
+            ? msg.content.substring(0, 1000) + '...' 
+            : msg.content;
+            
           messages.push({
             role: msg.role,
-            content: msg.content
+            content: truncatedContent
           });
         }
       });
+
+      // Add conversation flow context if long conversation
+      if (conversationContext.length > 15) {
+        const topicSummary = extractConversationTopics(conversationContext);
+        if (topicSummary) {
+          enhancedSystemPrompt += `\n\nCONVERSATION TOPICS: This ongoing conversation has covered: ${topicSummary}. Build on these topics naturally.`;
+        }
+      }
     }
     
     // Add current user message with attachments if any

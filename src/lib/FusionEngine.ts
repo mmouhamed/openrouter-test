@@ -140,7 +140,9 @@ export class FusionEngine {
     this.responseCache.set(key, {
       response,
       timestamp: Date.now(),
-      ttl: ttlMinutes * 60 * 1000
+      ttl: ttlMinutes * 60 * 1000,
+      confidence: 0.8,
+      tokens: Math.ceil(response.length / 4) // Rough token estimate
     });
   }
   
@@ -1106,91 +1108,6 @@ Provide a concise, accurate synthesis:`;
   }
   
   // Turbo fusion process with early completion and fast synthesis
-  async processFusionQueryTurbo(
-    request: FusionRequest,
-    progressCallback?: (progress: FusionProgress) => void
-  ): Promise<FusionResult> {
-    const startTime = Date.now();
-    
-    try {
-      progressCallback?.(({
-        stage: 'initializing',
-        modelProgress: {},
-        synthesisProgress: 0,
-        message: 'Starting Turbo AI Fusion...'
-      }));
-
-      // Query complexity analysis for adaptive strategy
-      const isComplexQuery = this.analyzeQueryComplexity(request.query);
-      
-      // Use race-based parallel querying with early completion
-      const modelResponses = await this.queryModelsWithRacing(
-        request, 
-        progressCallback,
-        isComplexQuery
-      );
-
-      // Early synthesis with fast model if we have enough responses
-      const successfulResponses = modelResponses.filter(r => r.status === 'success');
-      if (successfulResponses.length >= 2) {
-        const fusedResponse = await this.synthesizeResponsesTurbo(
-          request.query,
-          modelResponses,
-          request.fusionStrategy,
-          request.conversationContext,
-          progressCallback,
-          isComplexQuery
-        );
-
-        const processingTime = Date.now() - startTime;
-
-        progressCallback?.(({
-          stage: 'completed',
-          modelProgress: this.getCompletedProgress(),
-          synthesisProgress: 100,
-          message: `Turbo AI Fusion complete! (${Math.round(processingTime/1000)}s)`
-        }));
-
-        return {
-          fusedResponse,
-          individualResponses: modelResponses,
-          fusionStrategy: 'turbo-' + request.fusionStrategy,
-          processingTime,
-          confidence: this.calculateFusionConfidence(modelResponses),
-          modelsUsed: this.models.filter((_, i) => modelResponses[i].status === 'success').map(m => m.name),
-          synthesisModel: 'Llama 8B (Speed Fusion)',
-          metadata: {
-            totalTokens: this.estimateTokens(fusedResponse),
-            costSavings: 'Free (Turbo Optimized)',
-            qualityScore: this.calculateQualityScore(modelResponses)
-          }
-        };
-      } else if (successfulResponses.length === 1) {
-        // Single model fallback with enhancement
-        return this.enhanceSingleResponse(successfulResponses[0], startTime);
-      } else {
-        throw new Error('No successful model responses');
-      }
-
-    } catch (error) {
-      progressCallback?.(({
-        stage: 'error',
-        modelProgress: {},
-        synthesisProgress: 0,
-        message: `Turbo Fusion failed: ${(error as Error).message}`
-      }));
-      throw error;
-    }
-  }
-  
-  // Optimized fusion process for production use
-  async processFusionQueryOptimized(
-    request: FusionRequest,
-    progressCallback?: (progress: FusionProgress) => void
-  ): Promise<FusionResult> {
-    // Delegate to turbo method for now
-    return this.processFusionQueryTurbo(request, progressCallback);
-  }
   
   private async getSingleModelFallback(
     request: FusionRequest,

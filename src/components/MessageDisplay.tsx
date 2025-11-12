@@ -1,11 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { ChatMessage } from '@/contexts/ChatContext';
+import { Message } from '@/types/chat';
 import ImagePreview from './ImagePreview';
 
 interface MessageDisplayProps {
-  message: ChatMessage;
+  message: Message;
   getModelInfo: (modelId: string) => { name?: string; description?: string; icon?: string };
   onCopy: (content: string) => void;
   onEdit?: (messageId: string, newContent: string) => void;
