@@ -38,7 +38,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
   // Conversation management state
   const [currentChatId, setCurrentChatId] = useState<string>('');
   const [chatHistory, setChatHistory] = useState<{ [chatId: string]: ChatHistory }>({});
-  const [showSidebar, setShowSidebar] = useState<boolean>(false);
+  const [showSidebar, setShowSidebar] = useState<boolean>(true);
   const [editingTitleId, setEditingTitleId] = useState<string>('');
   const [editingTitle, setEditingTitle] = useState<string>('');
 
@@ -59,7 +59,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
   const [, setUsageHints] = useState<string[]>([]);
   const [queryAnalysis, setQueryAnalysis] = useState<QueryAnalysis | null>(null);
   const [, setRoutingDecision] = useState<RoutingDecision | null>(null);
-  const [selectedModel] = useState<string>('AI Fusion');
+  const [selectedModel] = useState<string>('QoraFusion 3.1');
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
 
   // Refs
@@ -149,7 +149,11 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
       setMessages(chatHistory[chatId].messages);
       setError('');
       setSmartRecommendations([]);
-      setShowSidebar(false);
+      
+      // Only hide sidebar on mobile (screen width < 1024px)
+      if (window.innerWidth < 1024) {
+        setShowSidebar(false);
+      }
       
       // Update conversation context
       conversationManager.initializeConversation(chatId, chatHistory[chatId].messages);
@@ -245,6 +249,46 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
       createNewChat();
     }
     
+    // Check for initial message from home page
+    const initialMessage = sessionStorage.getItem('initialMessage');
+    if (initialMessage) {
+      sessionStorage.removeItem('initialMessage');
+      
+      // Create a new chat first, then add the message
+      const newChatId = `chat-${Date.now()}`;
+      const newChat: ChatHistory = {
+        id: newChatId,
+        title: 'New Chat',
+        messages: [],
+        lastUpdate: new Date(),
+        createdAt: new Date()
+      };
+      
+      const updatedChats = { ...chatHistory, [newChatId]: newChat };
+      setChatHistory(updatedChats);
+      setCurrentChatId(newChatId);
+      setMessages([]);
+      setError('');
+      setSmartRecommendations([]);
+      
+      // Initialize conversation context
+      conversationManager.initializeConversation(newChatId, []);
+      
+      saveConversationsToStorage(updatedChats, newChatId);
+      
+      setInput(initialMessage);
+      // Auto-send the message after a brief delay
+      setTimeout(() => {
+        const event = new Event('submit') as any;
+        if (inputRef.current) {
+          const form = inputRef.current.closest('form');
+          if (form) {
+            form.dispatchEvent(event);
+          }
+        }
+      }, 500);
+    }
+    
     fetchSystemHealth();
     loadUsageHints();
     
@@ -265,7 +309,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
     if (messages.length > 0 && currentChatId) {
       updateCurrentChatWithMessages(messages);
     }
-  }, [messages, currentChatId, updateCurrentChatWithMessages]);
+  }, [messages, currentChatId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -702,7 +746,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
     return names[strategy as keyof typeof names] || 'Processing';
   };
 
-  // Sidebar Content Component
+  // Claude-style Sidebar Content Component
   const SidebarContent = () => {
     const sortedChats = Object.values(chatHistory).sort((a, b) => 
       b.lastUpdate.getTime() - a.lastUpdate.getTime()
@@ -710,15 +754,23 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
     return (
       <div className="flex flex-col h-full bg-white dark:bg-gray-900">
-        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
-          <h2 id="sidebar-title" className="text-lg font-semibold text-gray-900 dark:text-white">
-            Chat History
-          </h2>
+        {/* Header with Logo and Close */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-800">
+          <div className="flex items-center space-x-2">
+            <div className="w-6 h-6 flex items-center justify-center">
+              <img 
+                src="/ChatQora.png" 
+                alt="ChatQora" 
+                className="w-6 h-6 object-contain"
+              />
+            </div>
+            <span className="font-semibold text-gray-900 dark:text-white text-sm">ChatQora</span>
+          </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setShowSidebar(false)}
-            className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+            className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300 lg:hidden"
             aria-label="Close sidebar"
           >
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -727,36 +779,72 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
           </Button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-2">
+        {/* New Chat Button */}
+        <div className="p-3">
+          <Button
+            onClick={() => {
+              createNewChat();
+              // Only hide sidebar on mobile (screen width < 1024px)
+              if (window.innerWidth < 1024) {
+                setShowSidebar(false);
+              }
+            }}
+            className="w-full bg-gray-900 hover:bg-gray-800 dark:bg-gray-100 dark:hover:bg-gray-200 text-white dark:text-gray-900 rounded-lg justify-start"
+            size="sm"
+          >
+            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+            New chat
+          </Button>
+        </div>
+
+        {/* Navigation Items */}
+        <div className="px-3 space-y-1">
+          <a 
+            href="/"
+            className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            <span>Home</span>
+          </a>
+          
+          <div className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg">
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405l-3.431 1.143a1 1 0 01-1.287-1.287l1.143-3.431A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+            </svg>
+            <span>Chats</span>
+          </div>
+        </div>
+
+        {/* Chat History Section */}
+        <div className="flex-1 px-3 mt-6 overflow-y-auto">
+          <div className="mb-3">
+            <h3 className="px-3 text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+              Recents
+            </h3>
+          </div>
+
           {sortedChats.length === 0 ? (
             <div className="text-center py-8">
-              <p className="text-gray-500 dark:text-gray-400 text-sm">No chat history yet</p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => {
-                  createNewChat();
-                  setShowSidebar(false);
-                }}
-                className="mt-2 text-teal-600 dark:text-teal-400"
-              >
-                Start your first chat
-              </Button>
+              <p className="text-gray-400 dark:text-gray-500 text-sm">No conversations yet</p>
             </div>
           ) : (
-            <div className="space-y-1">
-              {sortedChats.map((chat) => (
+            <div className="space-y-0.5">
+              {sortedChats.slice(0, 20).map((chat) => (
                 <div
                   key={chat.id}
                   className={cn(
-                    "group relative rounded-lg p-3 cursor-pointer transition-colors",
+                    "group relative rounded-lg px-3 py-2 cursor-pointer transition-colors text-sm",
                     currentChatId === chat.id
-                      ? "bg-gradient-to-r from-teal-100 to-cyan-100 dark:from-teal-900/20 dark:to-cyan-900/20 border border-teal-200 dark:border-teal-700"
-                      : "hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent"
+                      ? "bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white"
+                      : "text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-850"
                   )}
                   onClick={() => switchToChat(chat.id)}
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
                       {editingTitleId === chat.id ? (
                         <input
@@ -772,28 +860,17 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                               setEditingTitle('');
                             }
                           }}
-                          className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white"
+                          className="w-full bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
                           autoFocus
                           onClick={(e) => e.stopPropagation()}
                         />
                       ) : (
-                        <h3 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                          {chat.title}
-                        </h3>
+                        <div className="truncate pr-6">{chat.title}</div>
                       )}
-                      <div className="flex items-center space-x-2 mt-1">
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {chat.messages.length} message{chat.messages.length !== 1 ? 's' : ''}
-                        </p>
-                        <span className="text-xs text-gray-400">•</span>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">
-                          {chat.lastUpdate.toLocaleDateString()}
-                        </p>
-                      </div>
                     </div>
 
-                    {/* Actions */}
-                    <div className="flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    {/* Actions - show on hover */}
+                    <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center space-x-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-gray-800 rounded shadow-sm">
                       <Button
                         variant="ghost"
                         size="icon"
@@ -802,7 +879,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                           setEditingTitleId(chat.id);
                           setEditingTitle(chat.title);
                         }}
-                        className="w-6 h-6 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                        className="w-5 h-5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
                         aria-label="Edit title"
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -814,11 +891,11 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                         size="icon"
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (window.confirm('Are you sure you want to delete this chat?')) {
+                          if (window.confirm('Delete this chat?')) {
                             deleteChat(chat.id);
                           }
                         }}
-                        className="w-6 h-6 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
+                        className="w-5 h-5 text-gray-400 hover:text-red-600 dark:hover:text-red-400"
                         aria-label="Delete chat"
                       >
                         <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -833,20 +910,26 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
           )}
         </div>
 
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-          <Button
-            onClick={() => {
-              createNewChat();
-              setShowSidebar(false);
-            }}
-            className="w-full bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white"
-            size="sm"
-          >
-            <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-            </svg>
-            New Chat
-          </Button>
+        {/* User Profile Section */}
+        <div className="border-t border-gray-100 dark:border-gray-800 p-4">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-gradient-to-br from-orange-500 to-red-500 rounded-full flex items-center justify-center text-white font-semibold text-sm">
+              U
+            </div>
+            <div className="flex-1">
+              <div className="text-sm font-medium text-gray-900 dark:text-white">User</div>
+              <div className="text-xs text-gray-500 dark:text-gray-400">ChatQora Plus</div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+              </svg>
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -854,22 +937,35 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
   return (
     <div className={cn("flex flex-col h-screen bg-gray-50 dark:bg-gray-950", className)}>
-      {/* Header */}
+      {/* Mobile-Optimized Header */}
       <header 
         className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-3 sm:px-4 py-2 flex-shrink-0"
         role="banner"
       >
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 flex items-center justify-center">
+            {/* Mobile Sidebar Toggle */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="lg:hidden p-1.5 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 touch-manipulation"
+              aria-label="Toggle sidebar"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </Button>
+            
+            <div className="w-7 h-7 flex items-center justify-center">
               <img 
                 src="/ChatQora.png" 
                 alt="ChatQora Logo" 
-                className="w-8 h-8 object-contain"
+                className="w-7 h-7 object-contain"
               />
             </div>
             <div>
-              <h1 className="text-lg font-semibold text-gray-900 dark:text-white">
+              <h1 className="text-base font-semibold text-gray-900 dark:text-white">
                 ChatQora
               </h1>
               <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
@@ -881,14 +977,14 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                 <span>Online</span>
                 {confidence > 0 && (
                   <>
-                    <span aria-hidden="true">•</span>
-                    <span>{Math.round(confidence * 100)}% Confidence</span>
+                    <span aria-hidden="true" className="hidden sm:inline">•</span>
+                    <span className="hidden sm:inline">{Math.round(confidence * 100)}% Confidence</span>
                   </>
                 )}
                 {queryAnalysis && (
                   <>
-                    <span aria-hidden="true">•</span>
-                    <span className="capitalize">{queryAnalysis.complexity} Query</span>
+                    <span aria-hidden="true" className="hidden sm:inline">•</span>
+                    <span className="capitalize hidden sm:inline">{queryAnalysis.complexity} Query</span>
                   </>
                 )}
               </div>
@@ -896,41 +992,18 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
           </div>
           
           <div className="flex items-center space-x-2">
-            {/* Chat History Sidebar Toggle */}
+            {/* Desktop Sidebar Toggle */}
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowSidebar(!showSidebar)}
-              className="flex items-center space-x-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
-              aria-label="Toggle chat history"
+              className="hidden lg:flex items-center space-x-1 text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300"
+              aria-label="Toggle sidebar"
             >
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-3.582 8-8 8a8.959 8.959 0 01-4.906-1.405l-3.431 1.143a1 1 0 01-1.287-1.287l1.143-3.431A8.959 8.959 0 013 12c0-4.418 3.582-8 8-8s8 3.582 8 8z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
-              <span className="text-sm">Chats</span>
             </Button>
-
-            {/* New Chat Button */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={createNewChat}
-              className="flex items-center space-x-1 text-gray-500 hover:text-teal-600 dark:text-gray-400 dark:hover:text-teal-300"
-              aria-label="Start new chat"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
-              <span className="text-sm">New</span>
-            </Button>
-
-            {/* Strategy Display */}
-            <div className="hidden md:flex items-center space-x-2 px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded-md">
-              <span className="text-sm" aria-hidden="true">{getStrategyIcon(currentStrategy)}</span>
-              <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
-                {getStrategyName(currentStrategy)}
-              </span>
-            </div>
 
             {/* Web Search Toggle */}
             <Button
@@ -938,7 +1011,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
               size="sm"
               onClick={() => setWebSearchEnabled(!webSearchEnabled)}
               className={cn(
-                "flex items-center space-x-2 transition-colors",
+                "flex items-center space-x-2 transition-colors touch-manipulation",
                 webSearchEnabled 
                   ? 'bg-gradient-to-r from-teal-100 to-cyan-100 text-teal-700 dark:bg-gradient-to-r dark:from-teal-900/20 dark:to-cyan-900/20 dark:text-teal-300 hover:from-teal-200 hover:to-cyan-200 dark:hover:from-teal-900/30 dark:hover:to-cyan-900/30' 
                   : 'text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
@@ -946,48 +1019,37 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
               aria-label={webSearchEnabled ? 'Disable web search' : 'Enable web search'}
             >
               <span aria-hidden="true">{webSearchEnabled ? '🌐' : '📚'}</span>
-              <span className="text-sm font-medium">
+              <span className="text-sm font-medium hidden sm:inline">
                 {webSearchEnabled ? 'Web' : 'Local'}
               </span>
-            </Button>
-
-            {/* Clear Chat */}
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={clearChat}
-              className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400"
-              aria-label="Start new chat"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-              </svg>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Chat History Sidebar */}
+      {/* Claude-style Sidebar */}
       {showSidebar && (
-        <div className="fixed inset-0 z-50 lg:hidden" aria-labelledby="sidebar-title" role="dialog" aria-modal="true">
-          <div className="fixed inset-0 bg-gray-600 bg-opacity-75" onClick={() => setShowSidebar(false)}></div>
-          <div className="fixed inset-y-0 left-0 flex w-full max-w-xs flex-col">
-            <SidebarContent />
+        <>
+          {/* Mobile overlay */}
+          <div className="fixed inset-0 z-40 lg:hidden" aria-labelledby="sidebar-title" role="dialog" aria-modal="true">
+            <div className="fixed inset-0 bg-black bg-opacity-25" onClick={() => setShowSidebar(false)}></div>
+            <div className="fixed inset-y-0 left-0 flex w-80 flex-col bg-white dark:bg-gray-900 shadow-xl">
+              <SidebarContent />
+            </div>
           </div>
-        </div>
+        </>
       )}
 
-      <div className={cn("flex h-full", showSidebar ? "lg:pl-72" : "")}>
-        {/* Desktop Sidebar */}
-        <div className={cn(
-          "hidden lg:flex lg:w-72 lg:flex-col lg:fixed lg:inset-y-0 lg:border-r lg:border-gray-200 lg:dark:border-gray-700 lg:bg-white lg:dark:bg-gray-900 transition-all duration-300",
-          showSidebar ? "lg:translate-x-0" : "lg:-translate-x-full"
-        )}>
-          <SidebarContent />
-        </div>
+      <div className="flex h-full">
+        {/* Desktop Sidebar - Always visible when showSidebar is true */}
+        {showSidebar && (
+          <div className="hidden lg:flex lg:w-80 lg:flex-col lg:border-r lg:border-gray-200 lg:dark:border-gray-700 lg:bg-white lg:dark:bg-gray-900">
+            <SidebarContent />
+          </div>
+        )}
 
         {/* Main Content */}
-        <div className={cn("flex-1 flex flex-col min-w-0", showSidebar ? "lg:pl-72" : "")}>
+        <div className={cn("flex-1 flex flex-col min-w-0", showSidebar ? "lg:ml-0" : "")}>
 
       {/* Messages */}
       <main 
@@ -1114,7 +1176,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
           </div>
         ) : (
           /* ChatGPT-style Message Layout */
-          <div className="px-3 sm:px-4 py-3 space-y-3">
+          <div className="px-3 sm:px-4 py-3 pb-32 space-y-3">
             {messages.map((message, index) => (
               <div key={index} className="group">
                 <div className={cn("flex", message.role === 'user' ? 'justify-end' : 'justify-start')}>
@@ -1159,10 +1221,10 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
                       {/* Message Bubble */}
                       <div className={cn(
-                        "rounded-xl px-3 py-2 shadow-sm", 
+                        "rounded-xl px-3 py-2.5 shadow-sm", 
                         message.role === 'user' 
-                          ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white ml-8 shadow-md' 
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 mr-8'
+                          ? 'bg-gradient-to-r from-teal-600 to-cyan-600 text-white ml-3 sm:ml-6 shadow-md' 
+                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 border border-gray-200 dark:border-gray-700 mr-3 sm:mr-6'
                       )}>
                         {message.role === 'user' ? (
                           <div className="prose prose-sm max-w-none prose-invert">
@@ -1181,10 +1243,10 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
                       {/* Message Metadata */}
                       {message.metadata?.processingTime && (
-                        <div className={cn("mt-1 text-xs text-gray-500 dark:text-gray-400", message.role === 'user' ? 'text-right mr-8' : 'text-left')}>
-                          Processed in {message.metadata.processingTime}ms
+                        <div className={cn("mt-1 text-xs text-gray-500 dark:text-gray-400", message.role === 'user' ? 'text-right mr-4 sm:mr-8' : 'text-left')}>
+                          <span className="hidden sm:inline">Processed in {message.metadata.processingTime}ms</span>
                           {message.metadata.confidence && (
-                            <> • {Math.round(message.metadata.confidence * 100)}% confidence</>
+                            <span className="hidden sm:inline"> • {Math.round(message.metadata.confidence * 100)}% confidence</span>
                           )}
                           {(message.metadata.sources?.length || 0) > 0 && (
                             <> • {message.metadata.sources?.length} sources</>
@@ -1194,7 +1256,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
                       {/* Web Search Sources */}
                       {message.metadata?.sources && message.metadata.sources.length > 0 && (
-                        <div className="mt-2 mr-8">
+                        <div className="mt-2 mr-4 sm:mr-8">
                           <div className="flex items-center space-x-1 text-xs text-gray-500 dark:text-gray-400 mb-2">
                             <span aria-hidden="true">🌐</span>
                             <span>Sources:</span>
@@ -1442,9 +1504,9 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
         </div>
       )}
 
-      {/* Input Area */}
+      {/* Mobile-Optimized Input Area */}
       <footer 
-        className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 sm:px-4 py-2 flex-shrink-0"
+        className="border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 px-3 sm:px-4 py-3 sm:py-2 flex-shrink-0"
         role="contentinfo"
       >
         <form onSubmit={sendMessage} className="max-w-4xl mx-auto">
@@ -1466,11 +1528,11 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                 }}
                 placeholder="How can I help you today?"
                 rows={1}
-                className="w-full px-3 py-2 pr-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 focus:ring-offset-teal-100/50 dark:focus:ring-offset-teal-900/20 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none overflow-hidden min-h-[40px] max-h-[100px] transition-all duration-200 text-sm leading-relaxed"
+                className="w-full px-3 py-2.5 pr-12 sm:pr-10 bg-gray-50 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-1 focus:ring-offset-teal-100/50 dark:focus:ring-offset-teal-900/20 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 resize-none overflow-hidden min-h-[42px] max-h-[100px] transition-all duration-200 text-sm leading-relaxed touch-manipulation"
                 disabled={isLoading}
                 style={{
                   height: 'auto',
-                  minHeight: '40px',
+                  minHeight: '42px',
                   fontSize: '16px' // Prevents zoom on iOS
                 }}
                 onInput={(e) => {
@@ -1485,10 +1547,10 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
                 disabled={!input.trim() || isLoading}
                 variant="chatqora"
                 size="icon"
-                className="absolute right-2 bottom-1.5 w-7 h-7 shadow-md transition-all duration-200"
+                className="absolute right-2 bottom-2 w-10 h-10 sm:w-8 sm:h-8 shadow-md transition-all duration-200 touch-manipulation"
                 aria-label="Send message"
               >
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <svg className="w-5 h-5 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                 </svg>
               </Button>
