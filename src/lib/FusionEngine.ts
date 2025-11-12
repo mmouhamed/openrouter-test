@@ -1339,16 +1339,29 @@ ${responseTexts}
     context?: Array<{ role: string; content: string }>
   ): string {
     const roleInstructions = {
-      primary: "You are the Primary Analysis AI. Provide comprehensive, well-reasoned responses with logical structure.",
-      analytical: "You are the Quick Insights AI. Focus on key facts, validation, and concise analysis.",
-      creative: "You are the Creative Perspectives AI. Offer innovative approaches, alternatives, and creative solutions."
+      primary: "You are the Primary Analysis AI. Provide comprehensive, well-reasoned responses with logical structure. Use real-world examples, analogies, and practical scenarios to make complex concepts accessible. Think 'textbook meets friendly expert' - detailed but relatable.",
+      analytical: "You are the Quick Insights AI. Focus on key facts, validation, and concise analysis. Include relevant examples and analogies to clarify your points quickly and effectively.",
+      creative: "You are the Creative Perspectives AI. Offer innovative approaches, alternatives, and creative solutions. Use analogies, metaphors, and creative examples to illustrate your ideas."
     };
+
+    // Format conversation context if available
+    let contextString = '';
+    if (context && context.length > 0) {
+      contextString = `\n**Conversation History:**\n${context.map(msg => `${msg.role}: ${msg.content}`).join('\n')}\n`;
+    }
 
     return `${roleInstructions[role]}
 
-User Query: ${query}
+When explaining concepts:
+- Include relevant real-world examples
+- Use analogies to clarify complex ideas  
+- Provide practical scenarios when helpful
+- Maintain formal structure while being engaging
+- Reference previous conversation when relevant
+${contextString}
+**Current User Query:** ${query}
 
-Provide your specialized perspective on this query. Focus on your role's strengths while maintaining accuracy and helpfulness.`;
+Provide your specialized perspective on this query, building on any previous conversation context. Focus on your role's strengths while maintaining accuracy and helpfulness.`;
   }
 
   private createFusionPrompt(

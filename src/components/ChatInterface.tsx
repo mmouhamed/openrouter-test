@@ -111,56 +111,116 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     }
   };
 
-  // Dynamic loading stages with variation based on query type
+  // Enhanced dynamic loading stages with realistic AI system variations
   const getDynamicLoadingStages = (queryLength: number, hasComplexWords: boolean) => {
     const baseStages = [
-      { stage: 'Analyzing query structure...', model: 'Smart Router', progress: 5 },
-      { stage: 'Selecting optimal model...', model: 'Model Registry', progress: 15 },
+      { stage: 'Initializing request handler...', model: 'Neural Gateway', progress: 3 },
+      { stage: 'Parsing query semantics...', model: 'Language Processor', progress: 8 },
+      { stage: 'Analyzing complexity metrics...', model: 'Smart Router', progress: 15 },
     ];
 
-    // Add model-specific stages based on likely routing
+    // Add model-specific stages based on likely routing with more variety
     if (queryLength > 200 || hasComplexWords) {
-      baseStages.push(
-        { stage: 'Activating Oracle Core...', model: 'Oracle Core', progress: 30 },
-        { stage: 'Deep reasoning analysis...', model: 'Oracle Core', progress: 50 },
-        { stage: 'Synthesizing complex response...', model: 'Fusion Engine', progress: 70 }
-      );
+      const complexStages = [
+        { stage: 'Engaging Oracle reasoning matrix...', model: 'Oracle Core Prime', progress: 25 },
+        { stage: 'Activating deep analysis modules...', model: 'Oracle Cognitive Engine', progress: 35 },
+        { stage: 'Processing multi-dimensional context...', model: 'Context Analyzer', progress: 45 },
+        { stage: 'Synthesizing comprehensive insights...', model: 'Knowledge Synthesizer', progress: 60 },
+        { stage: 'Cross-referencing expert databases...', model: 'Domain Specialist', progress: 75 }
+      ];
+      baseStages.push(...complexStages);
     } else if (queryLength < 50) {
-      baseStages.push(
-        { stage: 'Engaging Phoenix Core...', model: 'Phoenix Core', progress: 30 },
-        { stage: 'Rapid processing...', model: 'Phoenix Core', progress: 60 }
-      );
+      const quickStages = [
+        { stage: 'Spinning up Phoenix rapid core...', model: 'Phoenix Lightning', progress: 25 },
+        { stage: 'Executing fast-track processing...', model: 'Speed Optimizer', progress: 45 },
+        { stage: 'Delivering instant insights...', model: 'Rapid Response Unit', progress: 65 }
+      ];
+      baseStages.push(...quickStages);
     } else {
-      baseStages.push(
-        { stage: 'Initializing AI cores...', model: 'Phoenix Core', progress: 30 },
-        { stage: 'Processing with neural fusion...', model: 'Fusion Engine', progress: 55 }
-      );
+      const standardStages = [
+        { stage: 'Initializing multi-core processing...', model: 'Phoenix Fusion Core', progress: 25 },
+        { stage: 'Coordinating AI model collaboration...', model: 'Model Orchestrator', progress: 35 },
+        { stage: 'Executing parallel computation...', model: 'Distributed Processor', progress: 50 },
+        { stage: 'Integrating diverse perspectives...', model: 'Perspective Merger', progress: 65 }
+      ];
+      baseStages.push(...standardStages);
     }
 
-    baseStages.push(
-      { stage: 'Optimizing response quality...', model: 'Quality Filter', progress: 85 },
-      { stage: 'Finalizing output...', model: 'Response Engine', progress: 98 }
-    );
+    const finalStages = [
+      { stage: 'Conducting accuracy validation...', model: 'Quality Assurance AI', progress: 82 },
+      { stage: 'Optimizing user experience...', model: 'UX Enhancement Engine', progress: 88 },
+      { stage: 'Preparing intelligent delivery...', model: 'Smart Delivery System', progress: 94 },
+      { stage: 'Finalizing premium response...', model: 'Response Optimizer', progress: 98 }
+    ];
 
+    baseStages.push(...finalStages);
     return baseStages;
   };
 
-  // Dynamic loading messages and keywords
+  // Enhanced dynamic loading messages with realistic delivery variations
   const getDynamicProcessingMessages = (progress: number, userQuery: string) => {
     const queryKeywords = userQuery.toLowerCase().match(/\b(algorithm|data|code|analysis|design|system|model|process|compare|explain|create|build|implement|optimize|debug|test|architecture|framework|solution|performance|security|database|api|machine learning|ai|programming|development|software|technical|business|marketing|strategy|finance|research|study|learn|understand|concept|theory|practice|application|example|tutorial|guide|help|support|documentation|reference|overview|summary|details|features|benefits|advantages|disadvantages|pros|cons|comparison|difference|similarity|relationship|connection|integration|implementation|deployment|maintenance|scalability|reliability|efficiency|effectiveness|innovation|technology|digital|automation|cloud|mobile|web|frontend|backend|fullstack|devops|agile|scrum|kanban|project|management|leadership|team|collaboration|communication|presentation|report|analysis|dashboard|metrics|kpi|roi|conversion|growth|revenue|customer|user|experience|interface|design|visual|graphics|layout|typography|color|branding|marketing|sales|promotion|advertising|social|media|content|seo|analytics|tracking|monitoring|optimization|testing|qa|quality|assurance|control|validation|verification|compliance|standards|best practices|guidelines|recommendations|tips|tricks|hacks|shortcuts|tools|resources|libraries|frameworks|platforms|services|solutions|products|applications|software|hardware|infrastructure|network|server|database|storage|backup|recovery|disaster|security|privacy|encryption|authentication|authorization|access|permissions|roles|users|accounts|profiles|settings|configuration|customization|personalization|preferences|options|choices|selections|decisions|criteria|requirements|specifications|constraints|limitations|challenges|problems|issues|bugs|errors|exceptions|handling|debugging|troubleshooting|fixing|resolving|solving|improving|enhancing|upgrading|updating|migrating|refactoring|restructuring|reorganizing|streamlining|simplifying|clarifying|explaining|documenting|teaching|learning|training|coaching|mentoring|guiding|supporting|helping|assisting|facilitating|enabling|empowering|motivating|inspiring|encouraging|engaging|involving|participating|contributing|collaborating|cooperating|coordinating|communicating|connecting|networking|building|creating|developing|designing|planning|organizing|managing|leading|directing|controlling|monitoring|tracking|measuring|evaluating|assessing|reviewing|analyzing|researching|investigating|exploring|discovering|identifying|recognizing|understanding|comprehending|grasping|learning|absorbing|retaining|remembering|recalling|applying|using|utilizing|implementing|executing|performing|operating|running|functioning|working|processing|computing|calculating|determining|deciding|choosing|selecting|picking|opting|preferring|favoring|recommending|suggesting|proposing|offering|providing|delivering|supplying|serving|supporting|maintaining|sustaining|continuing|persisting|persevering|enduring|lasting|remaining|staying|keeping|holding|retaining|preserving|protecting|safeguarding|securing|defending|shielding|covering|wrapping|packaging|bundling|grouping|organizing|arranging|structuring|formatting|styling|designing|crafting|building|constructing|assembling|putting together|combining|merging|integrating|connecting|linking|joining|uniting|bringing together|gathering|collecting|accumulating|aggregating|summarizing|condensing|compressing|reducing|minimizing|optimizing|improving|enhancing|boosting|increasing|maximizing|expanding|extending|scaling|growing|developing|evolving|advancing|progressing|moving forward|proceeding|continuing|persisting|maintaining|sustaining|supporting|enabling|facilitating|streamlining|automating|digitizing|modernizing|updating|upgrading|improving|optimizing|fine-tuning|calibrating|adjusting|modifying|customizing|personalizing|tailoring|adapting|fitting|matching|aligning|synchronizing|coordinating|balancing|harmonizing|stabilizing|normalizing|standardizing|regularizing|systematizing|organizing|structuring|formalizing|documenting|recording|logging|tracking|monitoring|observing|watching|checking|verifying|validating|confirming|ensuring|guaranteeing|securing|protecting|safeguarding)\b/g) || [];
     
     const stages = [
-      { min: 0, max: 20, messages: ['Analyzing your query...', 'Understanding context...', 'Processing request...'], keywords: [...new Set(queryKeywords)].slice(0, 3) },
-      { min: 20, max: 40, messages: ['Selecting optimal models...', 'Routing to AI cores...', 'Initializing processing...'], keywords: ['neural networks', 'deep learning', 'optimization'] },
-      { min: 40, max: 60, messages: ['Generating insights...', 'Cross-referencing data...', 'Building response...'], keywords: [...new Set(queryKeywords)].slice(3, 6) },
-      { min: 60, max: 80, messages: ['Synthesizing information...', 'Structuring output...', 'Refining details...'], keywords: ['synthesis', 'analysis', 'refinement'] },
-      { min: 80, max: 95, messages: ['Optimizing response quality...', 'Final processing...', 'Quality assurance...'], keywords: ['validation', 'verification', 'quality'] },
-      { min: 95, max: 100, messages: ['Preparing final output...', 'Formatting response...', 'Delivering results...'], keywords: ['finalization', 'delivery', 'completion'] }
+      { min: 0, max: 15, 
+        messages: [
+          'Receiving your request...', 'Parsing query structure...', 'Understanding context...', 
+          'Initializing AI cores...', 'Activating neural pathways...', 'Loading cognitive modules...',
+          'Establishing data connections...', 'Warming up processing units...', 'Calibrating response engines...'
+        ], 
+        keywords: [...new Set(queryKeywords)].slice(0, 3) 
+      },
+      { min: 15, max: 35, 
+        messages: [
+          'Selecting optimal AI models...', 'Routing to specialized cores...', 'Analyzing query complexity...', 
+          'Distributing computational load...', 'Engaging Phoenix AI system...', 'Activating Oracle reasoning engine...',
+          'Initializing Wizard creativity module...', 'Spinning up parallel processors...', 'Orchestrating model collaboration...',
+          'Establishing inter-model communication...', 'Configuring fusion parameters...'
+        ], 
+        keywords: ['neural networks', 'deep learning', 'optimization', 'routing', 'selection'] 
+      },
+      { min: 35, max: 55, 
+        messages: [
+          'Generating comprehensive insights...', 'Cross-referencing knowledge bases...', 'Building detailed response...', 
+          'Synthesizing multi-model perspectives...', 'Conducting deep analysis...', 'Processing contextual information...',
+          'Extracting relevant patterns...', 'Correlating data points...', 'Generating creative solutions...',
+          'Performing logical reasoning...', 'Integrating domain expertise...', 'Validating information accuracy...'
+        ], 
+        keywords: [...new Set(queryKeywords)].slice(3, 6).concat(['insights', 'analysis', 'synthesis']) 
+      },
+      { min: 55, max: 75, 
+        messages: [
+          'Refining response structure...', 'Optimizing content clarity...', 'Enhancing explanation quality...', 
+          'Structuring comprehensive output...', 'Polishing technical details...', 'Organizing information hierarchy...',
+          'Improving readability flow...', 'Adding contextual examples...', 'Balancing depth and clarity...',
+          'Ensuring accuracy standards...', 'Fine-tuning response tone...', 'Optimizing user comprehension...'
+        ], 
+        keywords: ['refinement', 'optimization', 'structure', 'clarity', 'enhancement'] 
+      },
+      { min: 75, max: 92, 
+        messages: [
+          'Conducting quality assurance...', 'Performing final validations...', 'Running accuracy checks...', 
+          'Verifying response completeness...', 'Ensuring factual consistency...', 'Checking logical coherence...',
+          'Validating source credibility...', 'Testing response usefulness...', 'Confirming answer relevance...',
+          'Applying safety filters...', 'Reviewing ethical guidelines...', 'Finalizing quality metrics...'
+        ], 
+        keywords: ['validation', 'verification', 'quality', 'accuracy', 'assurance'] 
+      },
+      { min: 92, max: 100, 
+        messages: [
+          'Preparing delivery package...', 'Formatting final response...', 'Optimizing display layout...', 
+          'Packaging response data...', 'Applying final polish...', 'Preparing user presentation...',
+          'Finalizing output structure...', 'Completing delivery protocol...', 'Generating response metadata...',
+          'Preparing interactive elements...', 'Optimizing mobile compatibility...', 'Delivering premium results...',
+          'Finalizing AI-powered insights...', 'Completing intelligent analysis...', 'Ready for user consumption...'
+        ], 
+        keywords: ['finalization', 'delivery', 'completion', 'presentation', 'optimization'] 
+      }
     ];
     
     const currentStage = stages.find(stage => progress >= stage.min && progress <= stage.max) || stages[0];
-    const messageIndex = Math.floor(Date.now() / 2000) % currentStage.messages.length;
-    const keywordIndex = Math.floor(Date.now() / 1500) % Math.max(1, currentStage.keywords.length);
+    const messageIndex = Math.floor(Date.now() / 2500) % currentStage.messages.length;
+    const keywordIndex = Math.floor(Date.now() / 2000) % Math.max(1, currentStage.keywords.length);
     
     return {
       message: currentStage.messages[messageIndex],
@@ -179,18 +239,18 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
         setThinkingDots(prev => (prev % 3) + 1);
       }, 500);
       
-      // Update dynamic messages
+      // Update dynamic messages with psychological timing
       messageInterval = setInterval(() => {
         const lastMessage = messages[messages.length - 1];
         const userQuery = lastMessage?.role === 'user' ? lastMessage.content : '';
         const dynamic = getDynamicProcessingMessages(processingProgress, userQuery);
         setDynamicLoadingMessage(dynamic.message);
         
-        // Extract and rotate keywords
+        // Extract and rotate keywords with more variety
         const allKeywords = userQuery.toLowerCase().match(/\b\w+\b/g) || ['processing', 'analyzing', 'computing'];
         const uniqueKeywords = [...new Set(allKeywords)].filter(word => word.length > 3).slice(0, 8);
         setProcessingKeywords(uniqueKeywords);
-      }, 1500);
+      }, 2000 + Math.random() * 1000); // 2-3 seconds with randomness for natural feel
     }
     
     return () => {
@@ -199,7 +259,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     };
   }, [isLoading, processingProgress, messages]);
 
-  // Simulate processing stages
+  // Enhanced psychological processing stages simulation
   const simulateProcessingStages = (message: string) => {
     // Generate dynamic stages based on query analysis
     const hasComplexWords = /\b(analyze|compare|comprehensive|detailed|complex|advanced|technical|algorithm|implementation)\b/i.test(message);
@@ -216,9 +276,25 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
       } else {
         clearInterval(stageInterval);
       }
-    }, 400); // Change stage every 400ms
+    }, getVariableStageDelay(currentStageIndex, loadingStages.length)); // Variable timing for realism
 
     return stageInterval;
+  };
+
+  // Psychological timing: faster at start, slower in middle, faster at end
+  const getVariableStageDelay = (stageIndex: number, totalStages: number): number => {
+    const progress = stageIndex / totalStages;
+    
+    if (progress < 0.2) {
+      // Fast start - creates immediate engagement
+      return 300 + Math.random() * 200; // 300-500ms
+    } else if (progress < 0.7) {
+      // Slower middle - builds anticipation
+      return 600 + Math.random() * 400; // 600-1000ms
+    } else {
+      // Fast finish - satisfying completion
+      return 250 + Math.random() * 150; // 250-400ms
+    }
   };
 
   const sendMessage = async (e: React.FormEvent) => {
@@ -740,11 +816,14 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                             }
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5 overflow-hidden">
                           <div 
-                            className="bg-gradient-to-r from-purple-500 to-blue-600 h-1.5 rounded-full transition-all duration-300 ease-out"
+                            className="bg-gradient-to-r from-purple-500 via-purple-600 to-blue-600 h-1.5 rounded-full transition-all duration-700 ease-in-out relative"
                             style={{width: `${processingProgress}%`}}
-                          ></div>
+                          >
+                            {/* Shimmer effect for active processing */}
+                            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent animate-shimmer"></div>
+                          </div>
                         </div>
                       </div>
                       
