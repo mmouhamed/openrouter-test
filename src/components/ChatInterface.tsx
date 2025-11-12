@@ -28,6 +28,8 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [activeModel, setActiveModel] = useState<string>('');
   const [thinkingDots, setThinkingDots] = useState<number>(1);
+  const [dynamicLoadingMessage, setDynamicLoadingMessage] = useState<string>('');
+  const [processingKeywords, setProcessingKeywords] = useState<string[]>([]);
   
   // Smart Agent features
   const [smartRecommendations, setSmartRecommendations] = useState<SmartRecommendation[]>([]);
@@ -143,16 +145,59 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     return baseStages;
   };
 
-  // Animate thinking dots
+  // Dynamic loading messages and keywords
+  const getDynamicProcessingMessages = (progress: number, userQuery: string) => {
+    const queryKeywords = userQuery.toLowerCase().match(/\b(algorithm|data|code|analysis|design|system|model|process|compare|explain|create|build|implement|optimize|debug|test|architecture|framework|solution|performance|security|database|api|machine learning|ai|programming|development|software|technical|business|marketing|strategy|finance|research|study|learn|understand|concept|theory|practice|application|example|tutorial|guide|help|support|documentation|reference|overview|summary|details|features|benefits|advantages|disadvantages|pros|cons|comparison|difference|similarity|relationship|connection|integration|implementation|deployment|maintenance|scalability|reliability|efficiency|effectiveness|innovation|technology|digital|automation|cloud|mobile|web|frontend|backend|fullstack|devops|agile|scrum|kanban|project|management|leadership|team|collaboration|communication|presentation|report|analysis|dashboard|metrics|kpi|roi|conversion|growth|revenue|customer|user|experience|interface|design|visual|graphics|layout|typography|color|branding|marketing|sales|promotion|advertising|social|media|content|seo|analytics|tracking|monitoring|optimization|testing|qa|quality|assurance|control|validation|verification|compliance|standards|best practices|guidelines|recommendations|tips|tricks|hacks|shortcuts|tools|resources|libraries|frameworks|platforms|services|solutions|products|applications|software|hardware|infrastructure|network|server|database|storage|backup|recovery|disaster|security|privacy|encryption|authentication|authorization|access|permissions|roles|users|accounts|profiles|settings|configuration|customization|personalization|preferences|options|choices|selections|decisions|criteria|requirements|specifications|constraints|limitations|challenges|problems|issues|bugs|errors|exceptions|handling|debugging|troubleshooting|fixing|resolving|solving|improving|enhancing|upgrading|updating|migrating|refactoring|restructuring|reorganizing|streamlining|simplifying|clarifying|explaining|documenting|teaching|learning|training|coaching|mentoring|guiding|supporting|helping|assisting|facilitating|enabling|empowering|motivating|inspiring|encouraging|engaging|involving|participating|contributing|collaborating|cooperating|coordinating|communicating|connecting|networking|building|creating|developing|designing|planning|organizing|managing|leading|directing|controlling|monitoring|tracking|measuring|evaluating|assessing|reviewing|analyzing|researching|investigating|exploring|discovering|identifying|recognizing|understanding|comprehending|grasping|learning|absorbing|retaining|remembering|recalling|applying|using|utilizing|implementing|executing|performing|operating|running|functioning|working|processing|computing|calculating|determining|deciding|choosing|selecting|picking|opting|preferring|favoring|recommending|suggesting|proposing|offering|providing|delivering|supplying|serving|supporting|maintaining|sustaining|continuing|persisting|persevering|enduring|lasting|remaining|staying|keeping|holding|retaining|preserving|protecting|safeguarding|securing|defending|shielding|covering|wrapping|packaging|bundling|grouping|organizing|arranging|structuring|formatting|styling|designing|crafting|building|constructing|assembling|putting together|combining|merging|integrating|connecting|linking|joining|uniting|bringing together|gathering|collecting|accumulating|aggregating|summarizing|condensing|compressing|reducing|minimizing|optimizing|improving|enhancing|boosting|increasing|maximizing|expanding|extending|scaling|growing|developing|evolving|advancing|progressing|moving forward|proceeding|continuing|persisting|maintaining|sustaining|supporting|enabling|facilitating|streamlining|automating|digitizing|modernizing|updating|upgrading|improving|optimizing|fine-tuning|calibrating|adjusting|modifying|customizing|personalizing|tailoring|adapting|fitting|matching|aligning|synchronizing|coordinating|balancing|harmonizing|stabilizing|normalizing|standardizing|regularizing|systematizing|organizing|structuring|formalizing|documenting|recording|logging|tracking|monitoring|observing|watching|checking|verifying|validating|confirming|ensuring|guaranteeing|securing|protecting|safeguarding)\b/g) || [];
+    
+    const stages = [
+      { min: 0, max: 20, messages: ['Analyzing your query...', 'Understanding context...', 'Processing request...'], keywords: [...new Set(queryKeywords)].slice(0, 3) },
+      { min: 20, max: 40, messages: ['Selecting optimal models...', 'Routing to AI cores...', 'Initializing processing...'], keywords: ['neural networks', 'deep learning', 'optimization'] },
+      { min: 40, max: 60, messages: ['Generating insights...', 'Cross-referencing data...', 'Building response...'], keywords: [...new Set(queryKeywords)].slice(3, 6) },
+      { min: 60, max: 80, messages: ['Synthesizing information...', 'Structuring output...', 'Refining details...'], keywords: ['synthesis', 'analysis', 'refinement'] },
+      { min: 80, max: 95, messages: ['Optimizing response quality...', 'Final processing...', 'Quality assurance...'], keywords: ['validation', 'verification', 'quality'] },
+      { min: 95, max: 100, messages: ['Preparing final output...', 'Formatting response...', 'Delivering results...'], keywords: ['finalization', 'delivery', 'completion'] }
+    ];
+    
+    const currentStage = stages.find(stage => progress >= stage.min && progress <= stage.max) || stages[0];
+    const messageIndex = Math.floor(Date.now() / 2000) % currentStage.messages.length;
+    const keywordIndex = Math.floor(Date.now() / 1500) % Math.max(1, currentStage.keywords.length);
+    
+    return {
+      message: currentStage.messages[messageIndex],
+      keyword: currentStage.keywords[keywordIndex] || 'processing'
+    };
+  };
+
+  // Animate thinking dots and dynamic messages
   useEffect(() => {
     let interval: NodeJS.Timeout;
+    let messageInterval: NodeJS.Timeout;
+    
     if (isLoading) {
+      // Update dots
       interval = setInterval(() => {
         setThinkingDots(prev => (prev % 3) + 1);
       }, 500);
+      
+      // Update dynamic messages
+      messageInterval = setInterval(() => {
+        const lastMessage = messages[messages.length - 1];
+        const userQuery = lastMessage?.role === 'user' ? lastMessage.content : '';
+        const dynamic = getDynamicProcessingMessages(processingProgress, userQuery);
+        setDynamicLoadingMessage(dynamic.message);
+        
+        // Extract and rotate keywords
+        const allKeywords = userQuery.toLowerCase().match(/\b\w+\b/g) || ['processing', 'analyzing', 'computing'];
+        const uniqueKeywords = [...new Set(allKeywords)].filter(word => word.length > 3).slice(0, 8);
+        setProcessingKeywords(uniqueKeywords);
+      }, 1500);
     }
-    return () => clearInterval(interval);
-  }, [isLoading]);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(messageInterval);
+    };
+  }, [isLoading, processingProgress, messages]);
 
   // Simulate processing stages
   const simulateProcessingStages = (message: string) => {
@@ -673,7 +718,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         <div className="w-2 h-2 bg-white rounded-full animate-ping"></div>
                       </div>
                       <span className="text-sm text-gray-500 dark:text-gray-400">
-                        Assistant • {processingStage || 'Initializing...'}
+                        Assistant • {dynamicLoadingMessage || processingStage || 'Initializing...'}
                       </span>
                       {activeModel && (
                         <span className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300 px-2 py-0.5 rounded">
@@ -685,8 +730,15 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                       {/* Progress Bar */}
                       <div className="mb-3">
                         <div className="flex justify-between items-center mb-1">
-                          <span className="text-xs text-gray-500 dark:text-gray-400">Processing...</span>
-                          <span className="text-xs text-gray-500 dark:text-gray-400">{processingProgress}%</span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {processingProgress >= 95 ? (dynamicLoadingMessage || 'Processing...') : 'Processing...'}
+                          </span>
+                          <span className="text-xs text-gray-500 dark:text-gray-400">
+                            {processingProgress >= 98 ? 
+                              <span className="animate-pulse">Finalizing...</span> : 
+                              `${processingProgress}%`
+                            }
+                          </span>
                         </div>
                         <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
                           <div 
@@ -696,7 +748,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                         </div>
                       </div>
                       
-                      {/* Animated Thinking */}
+                      {/* Animated Thinking with Dynamic Keywords */}
                       <div className="flex items-center space-x-3">
                         <div className="flex space-x-1">
                           {[...Array(3)].map((_, i) => (
@@ -710,9 +762,27 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                             ></div>
                           ))}
                         </div>
-                        <span className="text-sm text-gray-500 dark:text-gray-400">
-                          AI is processing your request{'.'.repeat(thinkingDots)}
-                        </span>
+                        <div className="flex flex-col">
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            AI is processing your request{'.'.repeat(thinkingDots)}
+                          </span>
+                          {processingKeywords.length > 0 && (
+                            <div className="flex items-center space-x-1 mt-1">
+                              <span className="text-xs text-gray-400 dark:text-gray-500">Processing:</span>
+                              <div className="flex space-x-1">
+                                {processingKeywords.slice(0, 3).map((keyword, index) => (
+                                  <span 
+                                    key={index}
+                                    className="text-xs bg-purple-100 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 px-1.5 py-0.5 rounded animate-pulse"
+                                    style={{ animationDelay: `${index * 0.3}s` }}
+                                  >
+                                    {keyword}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
 
                       {/* Current Model Status */}

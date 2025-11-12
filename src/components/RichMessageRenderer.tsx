@@ -366,8 +366,8 @@ export default function RichMessageRenderer({
     ),
 
     table: ({ children }: { children: React.ReactNode }) => (
-      <div className="my-4 overflow-x-auto">
-        <table className="min-w-full border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
+      <div className="table-container my-6 overflow-x-auto">
+        <table className="min-w-full border-collapse border border-gray-300 dark:border-gray-600">
           {children}
         </table>
       </div>
@@ -380,13 +380,13 @@ export default function RichMessageRenderer({
     ),
 
     th: ({ children }: { children: React.ReactNode }) => (
-      <th className="px-4 py-2 text-left font-semibold text-gray-900 dark:text-white border-b border-gray-200 dark:border-gray-700">
+      <th className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-left text-sm font-semibold text-gray-900 dark:text-white bg-gray-100 dark:bg-gray-700">
         {children}
       </th>
     ),
 
     td: ({ children }: { children: React.ReactNode }) => (
-      <td className="px-4 py-2 text-gray-700 dark:text-gray-300 border-b border-gray-200 dark:border-gray-700">
+      <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
         {children}
       </td>
     ),
@@ -394,6 +394,147 @@ export default function RichMessageRenderer({
 
   // Process content for special formatting
   let processedContent = content;
+  
+  // Convert pipe-separated content to proper markdown tables
+  const enhanceTextFormatting = (text: string): string => {
+    let enhanced = text;
+    
+    // Look for pipe-separated content and convert to tables
+    // Pattern to match content with multiple pipes (table-like data)
+    const lines = enhanced.split('\n');
+    const processedLines: string[] = [];
+    let inTableMode = false;
+    let tableRows: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Check if line has multiple pipes (potential table row)
+      const pipeCount = (line.match(/\|/g) || []).length;
+      
+      if (pipeCount >= 2 && line.trim().length > 0) {
+        // This looks like table data
+        if (!inTableMode) {
+          inTableMode = true;
+          tableRows = [];
+        }
+        
+        // Split by pipes and clean up
+        const cells = line.split('|')
+          .map(cell => cell.trim())
+          .filter(cell => cell.length > 0);
+        
+        if (cells.length >= 2) {
+          // Convert to proper table row format
+          tableRows.push('| ' + cells.join(' | ') + ' |');
+        }
+      } else {
+        // Not a table row - process any accumulated table first
+        if (inTableMode && tableRows.length > 0) {
+          // Add the table to processed lines
+          if (tableRows.length === 1) {
+            // Single row - treat as header
+            processedLines.push('');
+            processedLines.push(tableRows[0]);
+            processedLines.push('|' + tableRows[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|');
+            processedLines.push('');
+          } else {
+            // Multiple rows - first is header
+            processedLines.push('');
+            processedLines.push(tableRows[0]);
+            processedLines.push('|' + tableRows[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|');
+            processedLines.push(...tableRows.slice(1));
+            processedLines.push('');
+          }
+          tableRows = [];
+        }
+        
+        inTableMode = false;
+        processedLines.push(line);
+      }
+    }
+    
+    // Handle any remaining table at the end
+    if (inTableMode && tableRows.length > 0) {
+      if (tableRows.length === 1) {
+        processedLines.push('');
+        processedLines.push(tableRows[0]);
+        processedLines.push('|' + tableRows[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|');
+        processedLines.push('');
+      } else {
+        processedLines.push('');
+        processedLines.push(tableRows[0]);
+        processedLines.push('|' + tableRows[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|');
+        processedLines.push(...tableRows.slice(1));
+        processedLines.push('');
+      }
+    }
+    
+    enhanced = processedLines.join('\n');
+    
+    // Clean up excessive line breaks
+    enhanced = enhanced.replace(/\n{4,}/g, '\n\n');
+    
+    return enhanced;
+  };
+  
+  processedContent = enhanceTextFormatting(processedContent);
+  
+  // Convert pipe-separated data to proper markdown tables
+  const convertPipeDataToTable = (text: string): string => {
+    // Look for lines that start with | and contain multiple | separated values
+    const lines = text.split('\n');
+    let inTable = false;
+    let tableLines: string[] = [];
+    const result: string[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Check if this line looks like table data (starts with |, has multiple |)
+      if (line.match(/^\|.*\|.*\|/)) {
+        if (!inTable) {
+          inTable = true;
+          tableLines = [];
+        }
+        
+        // Parse the line into cells
+        const cells = line.split('|').slice(1, -1).map(cell => cell.trim()).filter(cell => cell);
+        if (cells.length >= 2) {
+          tableLines.push('| ' + cells.join(' | ') + ' |');
+        }
+      } else {
+        // If we were in a table and now we're not, process the table
+        if (inTable && tableLines.length >= 2) {
+          // Add header separator after first row
+          const processedTable = [
+            tableLines[0],
+            '|' + tableLines[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|',
+            ...tableLines.slice(1)
+          ];
+          result.push('', ...processedTable, '');
+        }
+        
+        inTable = false;
+        tableLines = [];
+        result.push(line);
+      }
+    }
+    
+    // Handle table at end of content
+    if (inTable && tableLines.length >= 2) {
+      const processedTable = [
+        tableLines[0],
+        '|' + tableLines[0].split('|').slice(1, -1).map(() => ' --- ').join('|') + '|',
+        ...tableLines.slice(1)
+      ];
+      result.push('', ...processedTable, '');
+    }
+    
+    return result.join('\n');
+  };
+  
+  processedContent = convertPipeDataToTable(processedContent);
   
   // Handle callouts
   processedContent = processedContent.replace(
