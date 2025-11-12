@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Message } from '@/types/chat';
 import ImagePreview from './ImagePreview';
+import EnhancedMessageRenderer from './EnhancedMessageRenderer';
 
 interface MessageDisplayProps {
   message: Message;
@@ -252,7 +253,7 @@ export default function MessageDisplay({ message, getModelInfo: _getModelInfo, o
                 </div>
               </div>
             ) : (
-              <div className="text-gray-800 dark:text-gray-200 leading-relaxed" dangerouslySetInnerHTML={{ __html: parseContent(message.content) }} />
+              <EnhancedMessageRenderer content={message.content} isAssistant={true} />
             )}
           </div>
 

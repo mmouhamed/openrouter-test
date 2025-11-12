@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { performWebSearch, createSearchContext, shouldUseWebSearch } from '@/utils/webSearch';
 import { FusionEngine } from '@/lib/FusionEngine';
+import { CHATGPT_STYLE_SYSTEM_PROMPT } from '@/lib/chatgpt-style-prompt';
+import { enhanceSystemPromptWithTone } from '@/lib/tone-analyzer';
 
 // Response sanitization function
 function sanitizeResponse(response: string): string {
@@ -373,23 +375,9 @@ export async function POST(request: NextRequest) {
     // Build messages array with optional system prompt and conversation context
     const messages: Array<{ role: string; content: string | Array<{ type: string; text?: string; image_url?: { url: string } }> }> = [];
     
-    // Add system prompt with current date and temporal guidelines
+    // Add system prompt with current date, temporal guidelines, and tone adaptation
     const currentDate = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
-    let enhancedSystemPrompt = systemPrompt || `You are a helpful AI assistant with expertise across many domains. You provide comprehensive, well-structured responses that are both informative and engaging.
-
-RESPONSE STYLE:
-- Use real-world examples and analogies to explain concepts
-- Include practical scenarios when helpful
-- Think "knowledgeable friend" - authoritative but approachable
-- Maintain organized structure while being conversational
-- Build on previous parts of our conversation when relevant
-
-EXPLANATION APPROACH:
-- Start with clear definitions for complex topics
-- Follow with relatable examples (e.g., "Think of it like...")
-- Include practical applications and scenarios
-- Use bullet points and structure for clarity
-- Connect abstract concepts to everyday experiences
+    const baseChatGPTPrompt = `${CHATGPT_STYLE_SYSTEM_PROMPT}
 
 TEMPORAL GUIDELINES:
 - Current date: ${currentDate}
@@ -403,6 +391,9 @@ LINK POLICY:
 - Use descriptive placeholders like "[Search for latest AI developments 2024]"
 - Suggest search terms instead of providing direct links
 - If referencing sources, describe them without providing URLs`;
+
+    // Enhance with tone-specific guidance based on the user's question
+    let enhancedSystemPrompt = systemPrompt || enhanceSystemPromptWithTone(baseChatGPTPrompt, message);
 
     if (searchContext) {
       enhancedSystemPrompt += '\n\n' + searchContext;
