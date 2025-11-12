@@ -182,7 +182,7 @@ export default function LandingPage() {
                 onClick={() => setInput('Surprise me with something interesting')}
                 className="col-span-2 sm:col-span-1 px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors touch-manipulation"
               >
-                🎯 Claude's choice
+                🎯 Claude&apos;s choice
               </button>
             </div>
 

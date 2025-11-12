@@ -539,11 +539,8 @@ export default function RichMessageRenderer({
   };
 
   const customComponents = {
-    code: ({ inline, className, children, ...props }: { 
-      inline?: boolean; 
-      className?: string; 
-      children: React.ReactNode; 
-      [key: string]: unknown; 
+    code: ({ inline, className, children, ...props }: React.HTMLAttributes<HTMLElement> & { 
+      inline?: boolean;
     }) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
@@ -592,66 +589,67 @@ export default function RichMessageRenderer({
       );
     },
     
-    a: ({ href, children }: { href?: string; children: React.ReactNode }) => (
+    a: ({ href, children, ...props }: React.AnchorHTMLAttributes<HTMLAnchorElement> & { children?: React.ReactNode }) => (
       <a
         href={href}
         target="_blank"
         rel="noopener noreferrer"
         className="text-purple-600 dark:text-purple-400 hover:text-purple-800 dark:hover:text-purple-300 underline decoration-purple-300 hover:decoration-purple-500 transition-colors inline-flex items-center gap-1"
+        {...props}
       >
         {children}
         <ExternalLink size={12} />
       </a>
     ),
 
-    h1: ({ children }: { children: React.ReactNode }) => (
+    h1: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
       <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
         {children}
       </h1>
     ),
 
-    h2: ({ children }: { children: React.ReactNode }) => (
+    h2: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
       <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-3 mt-6">
         {children}
       </h2>
     ),
 
-    h3: ({ children }: { children: React.ReactNode }) => (
+    h3: ({ children, ...props }: React.HTMLAttributes<HTMLHeadingElement>) => (
       <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2 mt-4">
         {children}
       </h3>
     ),
 
-    blockquote: ({ children }: { children: React.ReactNode }) => (
+    blockquote: ({ children, ...props }: React.BlockquoteHTMLAttributes<HTMLQuoteElement>) => (
       <blockquote className="border-l-4 border-purple-500 pl-4 py-2 my-4 bg-purple-50 dark:bg-purple-900/20 text-gray-700 dark:text-gray-300 italic">
         {children}
       </blockquote>
     ),
 
-    ul: ({ children }: { children: React.ReactNode }) => (
+    ul: ({ children, ...props }: React.HTMLAttributes<HTMLUListElement>) => (
       <ul className="list-disc list-inside space-y-1 my-4 text-gray-700 dark:text-gray-300">
         {children}
       </ul>
     ),
 
-    ol: ({ children }: { children: React.ReactNode }) => (
+    ol: ({ children, ...props }: React.OlHTMLAttributes<HTMLOListElement>) => (
       <ol className="list-decimal list-inside space-y-1 my-4 text-gray-700 dark:text-gray-300">
         {children}
       </ol>
     ),
 
-    table: ({ children }: { children: React.ReactNode }) => {
+    table: ({ children, ...props }: React.TableHTMLAttributes<HTMLTableElement>) => {
       const tableId = `table-${messageId}-${Math.random().toString(36).substr(2, 9)}`;
       return renderEnhancedTable(children, tableId);
     },
 
-    thead: ({ children }: { children: React.ReactNode }) => (
+    thead: ({ children, ...props }: React.HTMLAttributes<HTMLTableSectionElement>) => (
       <thead className="bg-gray-50 dark:bg-gray-800">
         {children}
       </thead>
     ),
 
-    th: ({ children }: { children: React.ReactNode }) => {
+    th: ({ children, ...props }: React.ThHTMLAttributes<HTMLTableHeaderCellElement>) => {
       const handleSort = (key: string) => {
         setSortConfig(prev => {
           if (prev?.key === key) {
@@ -679,7 +677,7 @@ export default function RichMessageRenderer({
       );
     },
 
-    td: ({ children }: { children: React.ReactNode }) => (
+    td: ({ children, ...props }: React.TdHTMLAttributes<HTMLTableDataCellElement>) => (
       <td className="border border-gray-300 dark:border-gray-600 px-4 py-3 text-sm text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800">
         {children}
       </td>

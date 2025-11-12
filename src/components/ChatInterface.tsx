@@ -129,8 +129,14 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   const fetchSystemHealth = async () => {
     try {
       const { healthCheckService } = await import('@/lib/healthCheck');
-      const health = await healthCheckService.getHealth();
-      setSystemHealth(health);
+      const healthStatus = await healthCheckService.getHealth();
+      // Convert simple health status to SystemHealth object
+      setSystemHealth({
+        models: {},
+        fusion: { strategiesAvailable: ['single', 'sequential'], averageProcessingTime: 0, successRate: 100 },
+        search: { providersOnline: ['default'], averageQueryTime: 0, cacheHitRate: 0 },
+        overall: { status: healthStatus === 'good' ? 'optimal' : healthStatus === 'degraded' ? 'degraded' : 'critical', score: healthStatus === 'good' ? 100 : healthStatus === 'degraded' ? 50 : 0, uptime: 100, activeConnections: 1 }
+      });
     } catch (error) {
       console.error('Failed to fetch system health:', error);
     }

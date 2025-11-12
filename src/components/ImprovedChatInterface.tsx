@@ -9,6 +9,7 @@ import RichMessageRenderer from './RichMessageRenderer';
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { cn } from '@/lib/utils';
+import Link from 'next/link';
 
 // Types for conversation management
 interface ChatHistory {
@@ -282,7 +283,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
       setInput(initialMessage);
       // Auto-send the message after a brief delay
       setTimeout(() => {
-        const event = new Event('submit') as any;
+        const event = new Event('submit') as Event & { target: HTMLFormElement };
         if (inputRef.current) {
           const form = inputRef.current.closest('form');
           if (form) {
@@ -321,8 +322,14 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
   const fetchSystemHealth = async () => {
     try {
       const { healthCheckService } = await import('@/lib/healthCheck');
-      const health = await healthCheckService.getHealth();
-      setSystemHealth(health);
+      const healthStatus = await healthCheckService.getHealth();
+      // Convert simple health status to SystemHealth object
+      setSystemHealth({
+        models: {},
+        fusion: { strategiesAvailable: ['single', 'sequential'], averageProcessingTime: 0, successRate: 100 },
+        search: { providersOnline: ['default'], averageQueryTime: 0, cacheHitRate: 0 },
+        overall: { status: healthStatus === 'good' ? 'optimal' : healthStatus === 'degraded' ? 'degraded' : 'critical', score: healthStatus === 'good' ? 100 : healthStatus === 'degraded' ? 50 : 0, uptime: 100, activeConnections: 1 }
+      });
     } catch (error) {
       console.error('Failed to fetch system health:', error);
     }
@@ -817,7 +824,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
 
         {/* Navigation Items */}
         <div className="px-3 space-y-1">
-          <a 
+          <Link 
             href="/"
             className="flex items-center space-x-2 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
           >
@@ -825,7 +832,7 @@ export default function ImprovedChatInterface({ className = '' }: ChatInterfaceP
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
             <span>Home</span>
-          </a>
+          </Link>
           
           <div className="flex items-center space-x-2 px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white rounded-lg">
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
