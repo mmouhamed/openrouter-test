@@ -3,10 +3,10 @@ import { test, expect } from '@playwright/test';
 test.describe('Web Search Sources Display', () => {
   test('should display web search sources when web search is enabled', async ({ page }) => {
     // Navigate to the chat page
-    await page.goto('/');
+    await page.goto('/chat');
 
     // Wait for the page to load
-    await expect(page.locator('h1')).toContainText('ChatQora');
+    await expect(page.getByPlaceholder('Ask anything... AI will route to the best models.')).toBeVisible();
 
     // Ensure web search is enabled (check if the toggle shows 'Web')
     const webSearchToggle = page.locator('button').filter({ hasText: 'Web' });
@@ -56,7 +56,7 @@ test.describe('Web Search Sources Display', () => {
   });
 
   test('should not display sources when web search is disabled', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/chat');
 
     // Ensure web search is disabled
     const webSearchToggle = page.locator('button').filter({ hasText: /Local|Web/ });
@@ -87,7 +87,7 @@ test.describe('Web Search Sources Display', () => {
   });
 
   test('should handle web search errors gracefully', async ({ page }) => {
-    await page.goto('/');
+    await page.goto('/chat');
 
     // Enable web search
     const webSearchToggle = page.locator('button').filter({ hasText: /Local|Web/ });

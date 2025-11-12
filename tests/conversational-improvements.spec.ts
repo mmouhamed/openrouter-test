@@ -5,7 +5,7 @@ test.describe('Conversational AI Improvements', () => {
 
   test.beforeEach(async ({ page: testPage }) => {
     page = testPage;
-    await page.goto('/');
+    await page.goto('/chat');
     
     // Wait for the chat interface to be ready
     await expect(page.getByPlaceholder('Ask anything... AI will route to the best models.')).toBeVisible();

@@ -154,6 +154,12 @@ export default function LandingPage() {
 
             {/* Mobile-Optimized Quick Action Buttons */}
             <div className="grid grid-cols-2 sm:flex sm:flex-wrap justify-center gap-1.5 mb-4 px-2 max-w-lg mx-auto">
+              <Link
+                href="/improved-chat"
+                className="px-3 py-2 bg-gradient-to-r from-teal-600 to-cyan-600 hover:from-teal-700 hover:to-cyan-700 text-white rounded-lg text-xs font-medium transition-all duration-200 shadow-md hover:shadow-lg touch-manipulation text-center"
+              >
+                💬 Chat
+              </Link>
               <button
                 onClick={() => setInput('Write a creative story')}
                 className="px-3 py-2 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg text-xs font-medium transition-colors touch-manipulation"
