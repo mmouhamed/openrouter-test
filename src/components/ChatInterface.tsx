@@ -1,11 +1,11 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { Message, SystemHealth, QueryAnalysis, RoutingDecision } from '@/types/chat';
 import { smartChatAgent, SmartRecommendation } from '@/lib/SmartChatAgent';
 import RichMessageRenderer from './RichMessageRenderer';
 import FusionProgress from './FusionProgress';
-import FusionComparison from './FusionComparison';
+// import FusionComparison from './FusionComparison';
 
 interface ChatInterfaceProps {
   className?: string;
@@ -54,6 +54,17 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
   // Session ID (could be enhanced with proper session management)
   const sessionId = 'chat-session';
 
+  const loadUsageHints = useCallback(async () => {
+    try {
+      const hints = smartChatAgent.generateUsageSuggestions({
+        previousQueries: messages.map(m => m.content).slice(-10)
+      });
+      setUsageHints(hints);
+    } catch (error) {
+      console.error('Failed to load usage hints:', error);
+    }
+  }, [messages]);
+
   useEffect(() => {
     // Load system health on mount
     fetchSystemHealth();
@@ -65,18 +76,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
     if (inputRef.current) {
       inputRef.current.focus();
     }
-  }, []);
-
-  const loadUsageHints = async () => {
-    try {
-      const hints = smartChatAgent.generateUsageSuggestions({
-        previousQueries: messages.map(m => m.content).slice(-10)
-      });
-      setUsageHints(hints);
-    } catch (error) {
-      console.error('Failed to load usage hints:', error);
-    }
-  };
+  }, [loadUsageHints]);
 
   useEffect(() => {
     // Auto-scroll to bottom
@@ -648,7 +648,7 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                             <span>Sources:</span>
                           </div>
                           <div className="space-y-2">
-                            {message.metadata.sources.slice(0, 3).map((source, index) => (
+                            {message.metadata?.sources?.slice(0, 3).map((source, index) => (
                               <div key={index} className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
                                 <div className="flex items-start justify-between">
                                   <div className="flex-1">
@@ -682,22 +682,22 @@ export default function ChatInterface({ className = '' }: ChatInterfaceProps) {
                                 </div>
                               </div>
                             ))}
-                            {message.metadata.sources.length > 3 && (
+                            {(message.metadata?.sources?.length ?? 0) > 3 && (
                               <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
-                                + {message.metadata.sources.length - 3} more sources
+                                + {(message.metadata?.sources?.length ?? 0) - 3} more sources
                               </div>
                             )}
                           </div>
                         </div>
                       )}
                       
-                      {/* Fusion Comparison */}
-                      {message.metadata.fusion && (
+                      {/* Fusion Comparison - Disabled until FusionMetadata matches component requirements */}
+                      {/* {message.metadata?.fusion && (
                         <FusionComparison 
                           fusionData={message.metadata.fusion} 
                           fusedResponse={message.content}
                         />
-                      )}
+                      )} */}
                     </div>
                   </div>
                 </div>

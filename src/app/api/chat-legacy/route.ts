@@ -10,8 +10,7 @@ export async function POST(request: NextRequest) {
     const { 
       message, 
       sessionId = 'default',
-      attachments = [],
-      options = {}
+      attachments = []
     } = body;
 
     // Validate input
@@ -112,7 +111,7 @@ export async function POST(request: NextRequest) {
           confidence: calculateConfidence(message, aiData.response || ''),
           fusion: {
             strategy: { 
-              type: strategy as any, 
+              type: strategy as 'single' | 'sequential' | 'parallel' | 'consensus', 
               models: [selectedModel], 
               reasoning, 
               confidence: 0.85 
@@ -177,7 +176,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Helper functions
-function generateSuggestions(userMessage: string, aiResponse: string): string[] {
+function generateSuggestions(userMessage: string, _aiResponse: string): string[] {
   const suggestions: string[] = [];
   
   // Based on question type

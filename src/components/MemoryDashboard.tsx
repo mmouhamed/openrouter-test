@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useChat } from '@/contexts/ChatContext';
+// import { useChat } from '@/contexts/ChatContext';
 
 interface MemoryDashboardProps {
   isOpen: boolean;
@@ -9,36 +9,43 @@ interface MemoryDashboardProps {
 }
 
 export default function MemoryDashboard({ isOpen, onClose }: MemoryDashboardProps) {
-  const { 
-    activeConversation, 
-    getMemoryStats, 
-    toggleMemoryForConversation,
-    conversations: _conversations 
-  } = useChat();
+  // Commented out until ChatContext is available
+  // const { 
+  //   activeConversation, 
+  //   getMemoryStats, 
+  //   toggleMemoryForConversation,
+  //   conversations: _conversations 
+  // } = useChat();
   const [stats, setStats] = useState<{ totalSegments: number; compressionRatio: number; segmentTypes: Record<string, number>; contextOptimized?: boolean } | null>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
-    if (isOpen && activeConversation) {
-      const memoryStats = getMemoryStats(activeConversation.id);
-      setStats(memoryStats);
-    }
-  }, [isOpen, activeConversation, getMemoryStats, refreshKey]);
+    // Commented out until ChatContext is available
+    // if (isOpen && activeConversation) {
+    //   const memoryStats = getMemoryStats(activeConversation.id);
+    //   setStats(memoryStats);
+    // }
+  }, [isOpen, refreshKey]);
 
   const refreshStats = () => {
     setRefreshKey(prev => prev + 1);
   };
 
   const handleToggleMemory = () => {
-    if (activeConversation) {
-      toggleMemoryForConversation(activeConversation.id);
-      setTimeout(refreshStats, 100);
-    }
+    // Commented out until ChatContext is available
+    // if (activeConversation) {
+    //   toggleMemoryForConversation(activeConversation.id);
+    //   setTimeout(refreshStats, 100);
+    // }
   };
 
   if (!isOpen) return null;
 
-  return (
+  // Return null until ChatContext is available
+  return null;
+
+  // Original render (commented out until ChatContext is available)
+  /* return (
     <>
       {/* Backdrop */}
       <div 
@@ -264,5 +271,5 @@ export default function MemoryDashboard({ isOpen, onClose }: MemoryDashboardProp
         </div>
       </div>
     </>
-  );
+  ); */
 }

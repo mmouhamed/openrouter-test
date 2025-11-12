@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Attachment } from '@/contexts/ChatContext';
+import { Attachment } from '@/types/chat';
 
 interface ImagePreviewProps {
   attachments: Attachment[];

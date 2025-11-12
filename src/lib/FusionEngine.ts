@@ -593,7 +593,7 @@ Provide a concise, accurate synthesis:`;
     const startTime = Date.now();
     
     // Use fastest, most reliable model (Llama 8B)
-    const fastModel = this.models.find(m => m.role === 'analytical')!;
+    const fastModel = this.models.find(m => m.role === 'primary') || this.models[0];
     
     progressCallback?.({
       stage: 'querying',
@@ -848,6 +848,20 @@ Provide a concise, accurate synthesis:`;
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
+        // Safety check for model object
+        if (!model || !model.id) {
+          return {
+            model: 'unknown',
+            modelName: 'Unknown Model',
+            response: '',
+            confidence: 0,
+            processingTime: 0,
+            role: 'primary' as const,
+            status: 'error' as const,
+            error: 'Model configuration error'
+          };
+        }
+        
         return {
           model: model.id,
           modelName: model.name,
@@ -1041,6 +1055,20 @@ Provide a concise, accurate synthesis:`;
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
+        // Safety check for model object
+        if (!model || !model.id) {
+          return {
+            model: 'unknown',
+            modelName: 'Unknown Model',
+            response: '',
+            confidence: 0,
+            processingTime: 0,
+            role: 'primary' as const,
+            status: 'error' as const,
+            error: 'Model configuration error'
+          };
+        }
+        
         return {
           model: model.id,
           modelName: model.name,
@@ -1168,7 +1196,7 @@ Provide a concise, accurate synthesis:`;
     request: FusionRequest,
     progressCallback?: (progress: FusionProgress) => void
   ): Promise<FusionResult> {
-    const fastModel = this.models.find(m => m.role === 'analytical')!; // Llama 8B
+    const fastModel = this.models.find(m => m.role === 'primary') || this.models[0]; // Llama 8B
     
     const response = await this.queryIndividualModel(fastModel, request, progressCallback);
     
@@ -1475,7 +1503,7 @@ Provide the synthesized response that leverages the collective intelligence of a
     // For simple queries, prioritize speed models first
     const orderedModels = isComplex 
       ? this.models // Use all models for complex queries
-      : [this.models[1], this.models[0], this.models[2]]; // Start with fast Llama 8B
+      : [this.models[0], this.models[1]].filter(Boolean); // Start with fast Llama 8B, filter out undefined
 
     const queries = orderedModels.map(model => 
       this.queryIndividualModelWithTimeout(model, request, progressCallback, isComplex ? 12000 : 8000)
@@ -1490,6 +1518,20 @@ Provide the synthesized response that leverages the collective intelligence of a
       if (result.status === 'fulfilled') {
         return result.value;
       } else {
+        // Safety check for model object
+        if (!model || !model.id) {
+          return {
+            model: 'unknown',
+            modelName: 'Unknown Model',
+            response: '',
+            confidence: 0,
+            processingTime: isComplex ? 12000 : 8000,
+            role: 'primary' as const,
+            status: 'error' as const,
+            error: 'Model configuration error'
+          };
+        }
+        
         return {
           model: model.id,
           modelName: model.name,

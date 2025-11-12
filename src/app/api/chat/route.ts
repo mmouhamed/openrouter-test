@@ -437,7 +437,7 @@ LINK POLICY:
         'X-Title': 'AI Chat Hub'
       },
       body: JSON.stringify({
-        model: model,
+        model: model === 'AI Fusion' ? 'meta-llama/llama-3.3-8b-instruct:free' : model,
         messages: messages,
       })
     });
@@ -494,7 +494,7 @@ LINK POLICY:
       model: model,
       usage: data.usage,
       contextSize: messages.length,
-      estimatedTokens: messages.reduce((acc: number, msg: { content: string | Array<any> }) => {
+      estimatedTokens: messages.reduce((acc: number, msg: { content: string | object }) => {
         const contentLength = typeof msg.content === 'string' ? msg.content.length : JSON.stringify(msg.content).length;
         return acc + Math.ceil(contentLength / 4);
       }, 0),

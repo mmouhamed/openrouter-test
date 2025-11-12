@@ -25,7 +25,7 @@ import { imageEnhancementService } from '@/services/imageEnhancementService';
 
 interface RichMessageRendererProps {
   content: string;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   messageId: string;
   enableImageSearch?: boolean;
   enableInteractiveElements?: boolean;

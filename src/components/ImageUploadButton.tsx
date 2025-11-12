@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Attachment } from '@/contexts/ChatContext';
+import { Attachment } from '@/types/chat';
 
 interface ImageUploadButtonProps {
   onFileSelect: (attachment: Attachment) => void;

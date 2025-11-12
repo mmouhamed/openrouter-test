@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Attachment } from './DragDropUpload';
+import { Attachment } from '@/types/chat';
 
 interface EnhancedFileUploadProps {
   onFileSelect: (attachment: Attachment) => void;
